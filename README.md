@@ -27,9 +27,9 @@ Raspberry Pi → MQTT → AWS IoT Core → SQS Queue → IoT Processor Lambda �
 
 ### 1. Install Node.js and pnpm
 
+Install Node.js (v22+) from [https://nodejs.org](https://nodejs.org) (all platforms), then:
+
 ```bash
-# Install Node.js (v22+) — https://nodejs.org
-# Then install pnpm:
 npm install -g pnpm@10
 ```
 
@@ -38,16 +38,34 @@ npm install -g pnpm@10
 ```bash
 # macOS
 brew install terraform
+
+# Windows (with Chocolatey)
+choco install terraform
+
+# Linux
+sudo apt-get update && sudo apt-get install -y gnupg software-properties-common
+wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+sudo apt update && sudo apt install terraform
 ```
+
+Or download directly from [https://developer.hashicorp.com/terraform/downloads](https://developer.hashicorp.com/terraform/downloads).
 
 ### 3. Install & Configure AWS CLI
 
 ```bash
 # macOS
 brew install awscli
+
+# Windows — download the installer from:
+# https://awscli.amazonaws.com/AWSCLIV2.msi
+
+# Linux
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip && sudo ./aws/install
 ```
 
-Add this to `~/.aws/config`:
+Add this to `~/.aws/config` (macOS/Linux) or `C:\Users\<you>\.aws\config` (Windows):
 
 ```ini
 [sso-session synadia]
@@ -71,7 +89,14 @@ aws sso login --sso-session synadia
 **Before running any `terraform` or `aws` command, always export your profile:**
 
 ```bash
+# macOS / Linux
 export AWS_PROFILE=syn-hackathon-team-1
+
+# Windows (PowerShell)
+$env:AWS_PROFILE = "syn-hackathon-team-1"
+
+# Windows (cmd)
+set AWS_PROFILE=syn-hackathon-team-1
 ```
 
 Verify it works:
