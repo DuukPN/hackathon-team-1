@@ -86,6 +86,8 @@ Then log in:
 aws sso login --sso-session synadia
 ```
 
+You can also access the AWS Console in your browser at: [https://synadia.awsapps.com/start](https://synadia.awsapps.com/start)
+
 **Before running any `terraform` or `aws` command, always export your profile:**
 
 ```bash

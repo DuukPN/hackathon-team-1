@@ -13,7 +13,7 @@ ssh pi@hackathon-pi-1.local
 
 ### 1. Create IoT Certificates
 
-The Pi needs certificates to authenticate with AWS IoT Core. Create them in the AWS Console:
+The Pi needs certificates to authenticate with AWS IoT Core. Create them in the [AWS Console](https://synadia.awsapps.com/start):
 
 1. Go to **AWS Console → IoT Core → Security → Certificates**
 2. Click **Add certificate → Create certificate**
@@ -38,10 +38,10 @@ tracking-box/certs/
 
 ### 3. Get Your IoT Endpoint
 
-Find your account's IoT endpoint in the AWS Console:
+Find your account's IoT endpoint in the [AWS Console](https://synadia.awsapps.com/start):
 
-1. Go to **AWS Console → IoT Core → Settings** (bottom of the left sidebar)
-2. Copy the **Device data endpoint** (looks like `xxxxxx-ats.iot.eu-west-1.amazonaws.com`)
+1. Go to **AWS Console → IoT Core → Domain Configurations** (top of the left sidebar)
+2. Copy the **domain name of the `iot:Data-ATS` configuration** (looks like `xxxxxx-ats.iot.eu-west-1.amazonaws.com`)
 3. Paste it into `config.py` as the `ENDPOINT` value
 
 ### 4. Install Dependencies (on the Pi)

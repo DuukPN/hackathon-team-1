@@ -57,7 +57,7 @@ resource "aws_iot_topic_rule" "your_rule_name" {
 }
 ```
 
-- The **SQL query** determines which MQTT topic to listen on. The tracking box publishes to `tracking-box/data`.
+- The **SQL query** determines which MQTT topic to listen on.
 - The **SQS action** sends the message to the queue, which triggers the IoT processor Lambda.
 - The **IAM role** for the topic rule is already defined in `lambda-iot-processor.tf`.
 
@@ -73,7 +73,7 @@ Every time you change Lambda code or frontend code, rebuild and deploy:
 
 ```bash
 pnpm run apply          # Deploys lambdas
-pnpm run apply:frontend # Deploys frontend only (faster)
+pnpm run apply:frontend # Deploys frontend
 ```
 
 ## File Reference

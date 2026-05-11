@@ -8,7 +8,7 @@ An HTTP API served by [Hono](https://hono.dev/) behind API Gateway. Currently ha
 
 **What should it do?** Serve telemetry data to your frontend dashboard. You decide on the API shape, routes, and how to fetch/query the stored data.
 
-**Logs:** AWS Console → CloudWatch → Log groups → `/aws/lambda/hackathon-api`
+**Logs:** [AWS Console](https://synadia.awsapps.com/start) → CloudWatch → Log groups → `/aws/lambda/hackathon-api`
 
 ### Local Development
 
@@ -35,7 +35,7 @@ A Lambda function triggered by the SQS queue. When the tracking box publishes da
 
 **What should it do?** Parse the incoming sensor data and store it somewhere useful so the API Lambda can serve it to the frontend.
 
-**Logs:** AWS Console → CloudWatch → Log groups → `/aws/lambda/hackathon-iot-processor`
+**Logs:** [AWS Console](https://synadia.awsapps.com/start) → CloudWatch → Log groups → `/aws/lambda/hackathon-iot-processor`
 
 ### Deploy
 
