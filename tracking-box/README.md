@@ -90,3 +90,9 @@ pnpm run pi:gps
 ```
 
 See [gps/README.md](gps/README.md) for more details on the GPS module and NMEA data format.
+
+## IMU Sensor
+
+The Pi has a BNO055 9-axis IMU sensor connected via USB-to-I2C bridge. It provides accelerometer, gyroscope, and magnetometer data.
+
+See [imu/README.md](imu/README.md) for hardware details, setup instructions (udev rules, environment variables), and how to read sensor data.
