@@ -1,16 +1,44 @@
 # Lambdas
 
-## API Lambda (`lambdas/api/`)
+Both lambdas are Node.js (TypeScript) projects that get bundled with esbuild and deployed as single-file Lambda functions via Terraform.
 
-An HTTP API served by [Hono](https://hono.dev/) behind API Gateway. Currently has a single demo route that does nothing useful.
+## IoT Processor Lambda (`iot-processor/`)
+
+**File to edit:** [`iot-processor/src/index.ts`](iot-processor/src/index.ts)
+
+**When is it triggered?** Automatically by SQS when messages arrive from IoT Core. Messages are batched (up to 10 at a time). Each SQS message body contains exactly one MQTT message from the tracking box.
+
+**What does it do now?** Logs the incoming messages and does nothing else.
+
+**What you need to build:**
+- Parse the sensor data from each SQS message body (`record.body` is a JSON string)
+- Store the data so the API Lambda can later retrieve and serve it to the frontend
+
+<!-- TODO: Details on shared storage will be added here -->
+
+**Tip:** If you need to add AWS SDK packages (e.g. `@aws-sdk/client-s3`), install them in `lambdas/iot-processor/` and add the corresponding IAM permissions in `infra/lambda-iot-processor.tf`.
+
+**Logs:** [AWS Console](https://synadia.awsapps.com/start) → CloudWatch → Log groups → `/aws/lambda/hackathon-iot-processor`
+
+---
+
+## API Lambda (`api/`)
+
+**File to edit:** [`api/src/app.ts`](api/src/app.ts)
 
 **When is it triggered?** Every HTTP request to your API Gateway URL hits this Lambda.
 
-**What should it do?** Serve telemetry data to your frontend dashboard. You decide on the API shape, routes, and how to fetch/query the stored data.
+**What does it do now?** Has a single `GET /api/hello` route that returns a JSON message. Nothing useful.
 
-**Logs:** [AWS Console](https://synadia.awsapps.com/start) → CloudWatch → Log groups → `/aws/lambda/hackathon-api`
+**What you need to build:**
+- Add routes that your frontend will call to fetch telemetry data
+- Read the stored data (written by the IoT Processor) and return it as JSON
+- You decide on the API shape — what routes, what query parameters, what response format
+- If you need new API Gateway routes, add them in `infra/lambda-api.tf` (see the existing route as an example)
 
-### Local Development
+<!-- TODO: Details on data retrieval will be added here -->
+
+**Tip:** You can run the API locally for faster development:
 
 ```bash
 cd lambdas/api
@@ -18,28 +46,16 @@ pnpm dev
 # API running at http://localhost:3000
 ```
 
-### Deploy
+If you need AWS SDK packages, install them in `lambdas/api/` and add IAM permissions in `infra/lambda-api.tf`.
 
-```bash
-# From repo root:
-pnpm run apply
-```
+**Logs:** [AWS Console](https://synadia.awsapps.com/start) → CloudWatch → Log groups → `/aws/lambda/hackathon-api`
 
 ---
 
-## IoT Processor Lambda (`lambdas/iot-processor/`)
+## Deploy
 
-A Lambda function triggered by the SQS queue. When the tracking box publishes data to IoT Core, the IoT Topic Rule forwards it to SQS, and SQS triggers this Lambda with batches of up to 10 messages.
-
-**When is it triggered?** Automatically by SQS when messages arrive from IoT Core. Messages are batched (up to 10 at a time).
-
-**What should it do?** Parse the incoming sensor data and store it somewhere useful so the API Lambda can serve it to the frontend.
-
-**Logs:** [AWS Console](https://synadia.awsapps.com/start) → CloudWatch → Log groups → `/aws/lambda/hackathon-iot-processor`
-
-### Deploy
+After changing any lambda code, rebuild and deploy from the repo root:
 
 ```bash
-# From repo root:
 pnpm run apply
 ```
