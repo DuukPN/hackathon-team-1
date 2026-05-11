@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+:root {
+  --synadia-dark: #003530;
+  --synadia-accent: #35fdad;
+}
+
+body {
+  background-color: var(--synadia-dark);
+  color: #ffffff;
+  font-family: "Inter", system-ui, sans-serif;
+}

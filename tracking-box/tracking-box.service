@@ -1,0 +1,17 @@
+[Unit]
+Description=Tracking Box IoT telemetry
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/tracking-box
+ExecStart=/home/pi/tracking-box/.venv/bin/python -u main.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

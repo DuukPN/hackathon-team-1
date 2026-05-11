@@ -1,0 +1,30 @@
+{
+  "name": "hackathon-team-1",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "check": "pnpm -r run check",
+    "build": "pnpm -r run build",
+    "dev": "pnpm -r run dev",
+    "aws:login": "aws sso login --sso-session synadia",
+    "tf:init": "cd infra && terraform init",
+    "apply": "pnpm build && cd infra && terraform apply -auto-approve",
+    "apply:frontend": "pnpm --filter @hackathon-team-1/frontend apply",
+    "pi:deploy": "cd tracking-box && ./deploy.sh",
+    "pi:stop": "cd tracking-box && ./stop.sh",
+    "pi:status": "cd tracking-box && ./status.sh",
+    "pi:gps": "cd tracking-box && ./gps.sh"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.33.0",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  },
+  "devDependencies": {
+  }
+}

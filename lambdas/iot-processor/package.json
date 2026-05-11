@@ -1,0 +1,17 @@
+{
+  "name": "@hackathon-team-1/iot-processor",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node22 --outfile=dist/index.js --format=cjs",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.0",
+    "@types/node": "^25.6.2",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.8.0"
+  }
+}
