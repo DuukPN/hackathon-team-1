@@ -14,7 +14,7 @@ Both lambdas are Node.js (TypeScript) projects that get bundled with esbuild and
 - Parse the sensor data from each SQS message body (`record.body` is a JSON string)
 - Store the data so the API Lambda can later retrieve and serve it to the frontend
 
-<!-- TODO: Details on shared storage will be added here -->
+**Storage:** You store data by INSERTing it into a shared Athena table. See [docs/athena-s3-tables-guide.md](../docs/athena-s3-tables-guide.md) for how to connect and write SQL.
 
 **Tip:** If you need to add AWS SDK packages (e.g. `@aws-sdk/client-s3`), install them in `lambdas/iot-processor/` and add the corresponding IAM permissions in `infra/lambda-iot-processor.tf`.
 
@@ -36,7 +36,7 @@ Both lambdas are Node.js (TypeScript) projects that get bundled with esbuild and
 - You decide on the API shape — what routes, what query parameters, what response format
 - If you need new API Gateway routes, add them in `infra/lambda-api.tf` (see the existing route as an example)
 
-<!-- TODO: Details on data retrieval will be added here -->
+**Data retrieval:** You read data by SELECTing from the shared Athena table. See [docs/athena-s3-tables-guide.md](../docs/athena-s3-tables-guide.md) for how to connect and query.
 
 **Tip:** You can run the API locally for faster development:
 

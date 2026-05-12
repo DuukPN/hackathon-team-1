@@ -1,3 +1,21 @@
+variable "shared_role_arn" {
+  description = "ARN of the cross-account writer role in the shared account"
+  type        = string
+  default     = "arn:aws:iam::258975980862:role/hackathon-cross-account-writer"
+}
+
+variable "shared_athena_output_location" {
+  description = "Athena output location in the shared account"
+  type        = string
+  default     = "s3://hackathon-shared-athena-results-258975980862/query-results/"
+}
+
+variable "athena_catalog" {
+  description = "Name of the S3 Tables table bucket in the shared account"
+  type        = string
+  default     = "hackathon-shared-data"
+}
+
 data "archive_file" "iot_processor" {
   type        = "zip"
   source_file = "${path.module}/../lambdas/iot-processor/dist/index.js"
@@ -12,6 +30,16 @@ resource "aws_lambda_function" "iot_processor" {
   filename         = data.archive_file.iot_processor.output_path
   source_code_hash = data.archive_file.iot_processor.output_base64sha256
   timeout          = 60
+
+  environment {
+    variables = {
+      ATHENA_CATALOG                = var.athena_catalog
+      ATHENA_DATABASE               = "telemetry"
+      TABLE_NAME                    = "telemetry"
+      SHARED_ROLE_ARN               = var.shared_role_arn
+      SHARED_ATHENA_OUTPUT_LOCATION = var.shared_athena_output_location
+    }
+  }
 }
 
 resource "aws_iam_role" "iot_processor" {
@@ -51,6 +79,22 @@ resource "aws_iam_role_policy" "iot_processor_sqs" {
         ]
         Effect   = "Allow"
         Resource = aws_sqs_queue.telemetry_messages.arn
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "iot_processor_assume_shared" {
+  name = "hackathon-iot-processor-assume-shared"
+  role = aws_iam_role.iot_processor.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action   = "sts:AssumeRole"
+        Effect   = "Allow"
+        Resource = var.shared_role_arn
       }
     ]
   })
