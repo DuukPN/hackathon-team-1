@@ -71,6 +71,8 @@ pnpm run pi:status   # Check if it's running
 pnpm run pi:stop     # Stop the service
 ```
 
+> **Windows:** These scripts require bash. Use Git Bash, WSL, or run the SSH/rsync commands from the scripts manually.
+
 The deploy script installs a systemd service that auto-restarts the script. View logs on the Pi:
 
 ```bash
