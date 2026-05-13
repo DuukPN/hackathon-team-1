@@ -59,3 +59,17 @@ After changing any lambda code, rebuild and deploy from the repo root:
 ```bash
 pnpm run apply
 ```
+
+---
+
+## A Note on Real-Time Data
+
+Athena is great for storing and querying large amounts of data, but it's not real-time — each query takes 1-5 seconds, and INSERTed data takes a few more seconds to become visible in SELECTs. Combined with SQS batching, the total delay from sensor to dashboard can be 10-30 seconds.
+
+If you want your dashboard to update in near real-time (a few seconds or less), you'll need an additional caching layer alongside Athena. Some ideas:
+
+- **S3 JSON cache** — write a rolling JSON file per device to an S3 bucket, read it from the API Lambda. Simple but effective (~2-3s latency)
+- **DynamoDB** — a fast key-value database with sub-10ms reads/writes. More setup, but truly real-time
+- **Dual write** — write to both a fast cache (S3/DynamoDB) for the live view and Athena for historical queries
+
+Talk to us if you want to go down this path — we can help you set it up.
