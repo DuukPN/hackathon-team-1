@@ -180,7 +180,8 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
 
   if (process.env[INSERT_DUMMY_TELEMETRY_ROW_ENV] === "true") {
     console.log("Inserting dummy telemetry row because test mode is enabled");
-    await writeTelemetryRows([createDummyTelemetryRow()]);
+    console.log("we are now not inserting the rows for dummy values to not ddos :))x")
+    // await writeTelemetryRows([createDummyTelemetryRow()]);
     return { batchItemFailures: [] };
   }
 
@@ -352,10 +353,15 @@ async function writeTelemetryRows(rows: TelemetryStorageRow[]): Promise<void> {
 // Build the INSERT statement for the shared Athena/S3 Tables table.
 function buildInsertSql(rows: TelemetryStorageRow[]): string {
   const tableName = getAthenaTableName();
-  const columns = TELEMETRY_COLUMNS.join(", ");
+  const columns = TELEMETRY_COLUMNS.map(quoteIdentifier).join(", ");
   const values = rows.map((row) => `(${buildSqlValueList(row)})`).join(", ");
 
   return `INSERT INTO ${tableName} (${columns}) VALUES ${values}`;
+}
+
+// Quote column names so names like timestamp are handled as identifiers in Athena SQL.
+function quoteIdentifier(identifier: string): string {
+  return `"${identifier.replaceAll('"', '""')}"`;
 }
 
 // Build the SQL value list for one row, without the surrounding parentheses.
