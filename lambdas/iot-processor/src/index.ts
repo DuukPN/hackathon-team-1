@@ -8,9 +8,6 @@ import type { SQSBatchResponse, SQSEvent, SQSRecord } from "aws-lambda";
 
 const stsClient = new STSClient();
 
-
-
-
 // Cache the Athena client between warm Lambda invocations so we do not call STS for every message.
 let cachedAthenaClient: AthenaClient | undefined;
 let cachedAthenaClientExpiresAt = 0;
@@ -183,12 +180,14 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
 
   if (process.env[INSERT_DUMMY_TELEMETRY_ROW_ENV] === "true") {
     console.log("Inserting dummy telemetry row because test mode is enabled");
-    await writeTelemetryRow(createDummyTelemetryRow());
+    await writeTelemetryRows([createDummyTelemetryRow()]);
     return { batchItemFailures: [] };
   }
 
   // Returning only failed message IDs lets SQS retry bad messages without replaying successful ones.
   const batchItemFailures: SQSBatchResponse["batchItemFailures"] = [];
+  const rowsToInsert: TelemetryStorageRow[] = [];
+  const recordIdsToInsert: string[] = [];
 
   for (const record of event.Records) {
     try {
@@ -198,8 +197,9 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
       // Convert the incoming MQTT shape into the storage/table shape.
       const storageRow = toStorageRow(mqttMessage);
 
-      // Store the normalized row in the shared S3 Tables/Athena table.
-      await writeTelemetryRow(storageRow);
+      // Keep the row and source message ID together so the whole insert can be retried if Athena fails.
+      rowsToInsert.push(storageRow);
+      recordIdsToInsert.push(record.messageId);
     } catch (error) {
       console.error("Failed to process telemetry message", {
         messageId: record.messageId,
@@ -208,6 +208,21 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
       });
 
       batchItemFailures.push({ itemIdentifier: record.messageId });
+    }
+  }
+
+  try {
+    // Store all valid records from this SQS batch in one Athena INSERT.
+    await writeTelemetryRows(rowsToInsert);
+  } catch (error) {
+    console.error("Failed to insert telemetry batch", {
+      messageIds: recordIdsToInsert,
+      rowCount: rowsToInsert.length,
+      error,
+    });
+
+    for (const messageId of recordIdsToInsert) {
+      batchItemFailures.push({ itemIdentifier: messageId });
     }
   }
 
@@ -322,20 +337,30 @@ function toStorageRow(message: MqttTelemetryMessage): TelemetryStorageRow {
   };
 }
 
-// This is the storage boundary for one telemetry row.
-async function writeTelemetryRow(row: TelemetryStorageRow): Promise<void> {
-  const sql = buildInsertSql(row);
-  console.log("Prepared telemetry insert:", sql);
+// This is the storage boundary for a telemetry batch.
+async function writeTelemetryRows(rows: TelemetryStorageRow[]): Promise<void> {
+  if (rows.length === 0) {
+    console.log("No valid telemetry rows to insert");
+    return;
+  }
+
+  const sql = buildInsertSql(rows);
+  console.log("Prepared telemetry batch insert", { rowCount: rows.length, sql });
   await runAthenaQuery(sql);
 }
 
 // Build the INSERT statement for the shared Athena/S3 Tables table.
-function buildInsertSql(row: TelemetryStorageRow): string {
+function buildInsertSql(rows: TelemetryStorageRow[]): string {
   const tableName = getAthenaTableName();
   const columns = TELEMETRY_COLUMNS.join(", ");
-  const values = TELEMETRY_COLUMNS.map((column) => toSqlValue(row[column])).join(", ");
+  const values = rows.map((row) => `(${buildSqlValueList(row)})`).join(", ");
 
-  return `INSERT INTO ${tableName} (${columns}) VALUES (${values})`;
+  return `INSERT INTO ${tableName} (${columns}) VALUES ${values}`;
+}
+
+// Build the SQL value list for one row, without the surrounding parentheses.
+function buildSqlValueList(row: TelemetryStorageRow): string {
+  return TELEMETRY_COLUMNS.map((column) => toSqlValue(row[column])).join(", ");
 }
 
 // Build the fully-qualified Athena table path required by the shared S3 Tables catalog.
