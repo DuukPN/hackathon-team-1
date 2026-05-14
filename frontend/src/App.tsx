@@ -1,7 +1,7 @@
 import { useTelemetry } from "./useTelemetry";
-import { useEffect } from "react";
-import { MapContainer, TileLayer, Marker, Polyline, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import L from "leaflet";
+import { TelemetryPage } from "./TelemetryPage";
 import {
   LineChart,
   Line,
@@ -35,6 +35,10 @@ const ZANDVOORT_CENTER: [number, number] = [52.3888, 4.5422];
 // }
 
 export function App() {
+  if (window.location.pathname === "/telemetry") {
+    return <TelemetryPage />;
+  }
+
   const { data, latest, laps, currentLapTime } = useTelemetry();
 
   const currentLapMins = Math.floor(currentLapTime / 60000);
@@ -66,6 +70,12 @@ export function App() {
         <div className="flex items-center gap-4">
           <img src="/assets/LogowhiteBig.svg" alt="Synadia" className="h-6" />
         </div>
+        <a
+          href="/telemetry"
+          className="rounded border border-[#35fdad] px-3 py-2 text-xs font-semibold text-[#35fdad] transition hover:bg-[#35fdad] hover:text-[#003530]"
+        >
+          Telemetry data
+        </a>
       </div>
 
       <div className="flex gap-6 h-[450px]">
