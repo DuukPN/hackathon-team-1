@@ -3,3 +3,5 @@ pyserial
 adafruit-blinka
 adafruit-circuitpython-bno055
 hidapi
+gpsd-py3
+pynmea2

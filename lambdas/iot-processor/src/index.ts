@@ -51,6 +51,7 @@ const TELEMETRY_COLUMNS = [
   "abs_orientation_x",
   "abs_orientation_y",
   "abs_orientation_z",
+  "abs_orientation_w",
   "linear_acc_x",
   "linear_acc_y",
   "linear_acc_z",
@@ -108,6 +109,7 @@ type MqttTelemetryMessage = {
   abs_orientation_x: number;
   abs_orientation_y: number;
   abs_orientation_z: number;
+  abs_orientation_w: number;
   linear_acc_x: number;
   linear_acc_y: number;
   linear_acc_z: number;
@@ -168,6 +170,7 @@ function createDummyTelemetryRow(): TelemetryStorageRow {
     abs_orientation_x: 0.12,
     abs_orientation_y: -0.08,
     abs_orientation_z: 1.57,
+    abs_orientation_w: 1.57,
     linear_acc_x: 0.02,
     linear_acc_y: 0.01,
     linear_acc_z: -0.03,
@@ -288,6 +291,7 @@ function assertTelemetryMessage(value: unknown): asserts value is MqttTelemetryM
   assertNumber(value.abs_orientation_x, "abs_orientation_x");
   assertNumber(value.abs_orientation_y, "abs_orientation_y");
   assertNumber(value.abs_orientation_z, "abs_orientation_z");
+  assertNumber(value.abs_orientation_w, "abs_orientation_w");
   assertNumber(value.linear_acc_x, "linear_acc_x");
   assertNumber(value.linear_acc_y, "linear_acc_y");
   assertNumber(value.linear_acc_z, "linear_acc_z");
@@ -332,6 +336,7 @@ function toStorageRow(message: MqttTelemetryMessage): TelemetryStorageRow {
     abs_orientation_x: message.abs_orientation_x,
     abs_orientation_y: message.abs_orientation_y,
     abs_orientation_z: message.abs_orientation_z,
+    abs_orientation_w: message.abs_orientation_w,
     linear_acc_x: message.linear_acc_x,
     linear_acc_y: message.linear_acc_y,
     linear_acc_z: message.linear_acc_z,

@@ -53,6 +53,12 @@ importers:
 
   lambdas/api:
     dependencies:
+      '@aws-sdk/client-athena':
+        specifier: ^3.1046.0
+        version: 3.1046.0
+      '@aws-sdk/client-sts':
+        specifier: ^3.1046.0
+        version: 3.1046.0
       hono:
         specifier: ^4.7.0
         version: 4.12.18

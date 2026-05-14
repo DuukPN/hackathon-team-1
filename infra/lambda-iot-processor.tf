@@ -38,7 +38,7 @@ resource "aws_lambda_function" "iot_processor" {
       TABLE_NAME                    = "telemetry"
       SHARED_ROLE_ARN               = var.shared_role_arn
       SHARED_ATHENA_OUTPUT_LOCATION = var.shared_athena_output_location
-      INSERT_DUMMY_TELEMETRY_ROW = "true"
+      INSERT_DUMMY_TELEMETRY_ROW    = "true"
     }
   }
 }
