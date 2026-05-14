@@ -39,10 +39,8 @@ def main():
             mqtt_connection.publish(
                 topic=f"tracking-box/data",
                 payload=json.dumps({
-                    "data": str({
-                        "euler": sensor.euler,
-                        "gravity": sensor.gravity
-                    })
+                    "euler": sensor.euler,
+                    "gravity": sensor.gravity
                 }),
                 qos=mqtt.QoS.AT_LEAST_ONCE
             )
