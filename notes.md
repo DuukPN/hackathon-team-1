@@ -1,0 +1,2 @@
+- api_url = "https://00jbtatxmh.execute-api.eu-west-1.amazonaws.com"
+- frontend_url = "http://hackathon-team-1-frontend.s3-website-eu-west-1.amazonaws.com"
