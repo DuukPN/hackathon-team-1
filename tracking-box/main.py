@@ -7,6 +7,7 @@ from config import (
 
 import adafruit_bno055
 import board
+import time
 
 
 def main():
@@ -34,6 +35,15 @@ def main():
         while True:
             print(sensor.euler)
             print(sensor.gravity)
+            mqtt_connection.publish(
+                topic=f"tracking-box/data",
+                payload=str({
+                    "euler": sensor.euler,
+                    "gravity": sensor.gravity
+                }),
+                qos=mqtt.QoS.AT_LEAST_ONCE
+            )
+            time.sleep(1)
 
     except KeyboardInterrupt:
         print("Disconnecting...")

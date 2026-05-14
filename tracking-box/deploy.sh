@@ -18,6 +18,6 @@ echo "→ Installing deps..."
 ssh $SSH_OPTS "$PI_HOST" "cd $REMOTE_DIR && python3 -m venv .venv && .venv/bin/pip install -q -r requirements.txt"
 
 echo "→ Installing systemd service..."
-ssh $SSH_OPTS "$PI_HOST" "sudo cp $REMOTE_DIR/tracking-box.service /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable tracking-box && sudo systemctl start tracking-box"
+ssh $SSH_OPTS "$PI_HOST" "sudo cp $REMOTE_DIR/tracking-box.service /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable tracking-box && sudo systemctl restart tracking-box"
 
 echo "✓ Deployed and running as systemd service. Logs: ssh $PI_HOST 'journalctl -u tracking-box -f'"
