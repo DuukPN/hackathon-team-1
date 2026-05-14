@@ -4,18 +4,20 @@
   "type": "module",
   "scripts": {
     "dev": "node --import tsx src/dev.ts",
-    "build": "esbuild src/index.ts --bundle --platform=node --target=node22 --outfile=dist/index.js --format=cjs --external:@aws-sdk",
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node22 --outfile=dist/index.js --format=cjs",
     "check": "tsc --noEmit"
   },
   "dependencies": {
+    "@aws-sdk/client-athena": "^3.1046.0",
+    "@aws-sdk/client-sts": "^3.1046.0",
     "hono": "^4.7.0"
   },
   "devDependencies": {
-    "esbuild": "^0.25.0",
-    "typescript": "^5.8.0",
+    "@hono/node-server": "^1.13.0",
     "@types/aws-lambda": "^8.10.0",
     "@types/node": "^22.0.0",
+    "esbuild": "^0.25.0",
     "tsx": "^4.19.0",
-    "@hono/node-server": "^1.13.0"
+    "typescript": "^5.8.0"
   }
 }

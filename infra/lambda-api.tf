@@ -92,6 +92,12 @@ resource "aws_apigatewayv2_route" "api_hello" {
   target    = "integrations/${aws_apigatewayv2_integration.api.id}"
 }
 
+resource "aws_apigatewayv2_route" "api_get_telemetry" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "GET /api/get_telemetry"
+  target    = "integrations/${aws_apigatewayv2_integration.api.id}"
+}
+
 resource "aws_lambda_permission" "api_gw" {
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
