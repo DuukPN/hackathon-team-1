@@ -1,25 +1,10 @@
 import { useEffect, useState, useRef } from "react";
-
-export interface TelemetryData {
-  timestamp: string;
-  latitude: number;
-  longitude: number;
-  speed: number;
-  acc_x: number;
-  acc_y: number;
-}
-
-export interface LapData {
-  id: number;
-  time: string;
-  timeMs: number;
-  diff: string;
-  status: "fastest" | "good" | "worse" | "normal";
-}
+import { telemetryService, type LapData, type TelemetryData } from "./services/TelemetryService";
 
 // Coordinate boundary for the Zandvoort Start/Finish line
 const FINISH_LINE_START = { lat: 52.3888, lon: 4.5422 };
 const FINISH_LINE_END = { lat: 52.3885, lon: 4.5428 };
+const ATHENA_LOOKBACK_MS = 2 * 1000;
 
 // Zandvoort approximate racing line points (Adjusted for better accuracy)
 const CIRCUIT_POINTS = [
@@ -71,6 +56,7 @@ export function useTelemetry() {
   const prevPosition = useRef<{ lat: number, lon: number } | null>(null);
   const lapStartTime = useRef<number>(Date.now());
   const circuitProgress = useRef(0);
+  const isFetchingTelemetry = useRef(false);
 
   useEffect(() => {
     let t = 0;
@@ -82,13 +68,19 @@ export function useTelemetry() {
 
     const dataInterval = setInterval(async () => {
       let currentData: TelemetryData | null = null;
-      try {
-        const res = await fetch("/api/telemetry");
-        if (res.ok) {
-          currentData = await res.json();
+      if (!isFetchingTelemetry.current) {
+        try {
+          isFetchingTelemetry.current = true;
+          currentData = await telemetryService.getLatestTelemetryData({
+            startTimestamp: Date.now() - ATHENA_LOOKBACK_MS,
+            endTimestamp: Date.now(),
+            limit: 1000,
+          });
+        } catch (e) {
+          // Ignored
+        } finally {
+          isFetchingTelemetry.current = false;
         }
-      } catch (e) {
-        // Ignored
       }
 
       // If no valid data returned, generate mock data mimicking loop movements
@@ -140,38 +132,16 @@ export function useTelemetry() {
           // Debounce safeguard: Ignore crossings that are less than 5 seconds apart
           if (currentLapMs > 5000) {
             lapCount.current += 1;
-            
-            let status: "fastest" | "good" | "worse" | "normal" = "normal";
-            let diffStr = "";
-            
-            if (lapCount.current === 1) {
-               bestLapTime.current = currentLapMs;
-            } else {
-               const diffMs = currentLapMs - bestLapTime.current;
-               const diffSecs = Math.abs(diffMs / 1000);
-               const dMin = Math.floor(diffSecs / 60);
-               const dSec = (diffSecs % 60).toFixed(2).padStart(5, '0');
 
-               if (currentLapMs < bestLapTime.current) {
-                  status = "fastest";
-                  diffStr = `-${dMin}:${dSec}`;
-                  bestLapTime.current = currentLapMs;
-               } else {
-                  status = "worse";
-                  diffStr = `+${dMin}:${dSec}`;
-               }
+            const previousBestLapTime = bestLapTime.current;
+            if (lapCount.current === 1 || currentLapMs < bestLapTime.current) {
+              bestLapTime.current = currentLapMs;
             }
 
-            const minutes = Math.floor(currentLapMs / 60000);
-            const seconds = ((currentLapMs % 60000) / 1000).toFixed(2).padStart(5, "0");
-
-            setLaps(prev => [...prev, {
-              id: lapCount.current,
-              time: `${minutes}:${seconds}`,
-              timeMs: currentLapMs,
-              diff: diffStr,
-              status
-            }]);
+            setLaps(prev => [
+              ...prev,
+              telemetryService.toLapData(lapCount.current, currentLapMs, previousBestLapTime),
+            ]);
 
             // Reset start time to measure the next lap
             lapStartTime.current = now;
@@ -189,8 +159,7 @@ export function useTelemetry() {
         return next.length > 100 ? next.slice(next.length - 100) : next;
       });
 
-    // Reduced from 500ms to 200ms to make the dot movement super smooth and fast
-    }, 200);
+    }, 5000);
 
     return () => {
        clearInterval(dataInterval);
