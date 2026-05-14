@@ -41,7 +41,7 @@ export type TelemetryRow = {
 }
 
 export type TelemetryData = {
-  timestamp: string
+  timestamp: number
   latitude: number
   longitude: number
   speed: number
@@ -76,44 +76,13 @@ type ApiErrorResponse = {
 }
 
 const TELEMETRY_COLUMNS = [
-  "timestamp",
-  "team_id",
-  "session_id",
-  "latitude",
-  "longitude",
-  "altitude",
-  "speed",
-  "course",
-  "satellites",
-  "gps_timestamp",
-  "acc_x",
-  "acc_y",
-  "acc_z",
-  "gyro_x",
-  "gyro_y",
-  "gyro_z",
-  "mag_x",
-  "mag_y",
-  "mag_z",
-  "status_mag",
-  "status_gyro",
-  "status_acc",
-  "status_sys",
-  "pitch_rate",
-  "roll_rate",
-  "yaw_rate",
-  "pitch_angle",
-  "roll_angle",
-  "yaw_angle",
-  "temperature",
-  "gravity_x",
-  "gravity_y",
-  "gravity_z",
-  "abs_orientation_x",
-  "abs_orientation_y",
-  "abs_orientation_z",
-  "linear_acc_x",
-  "linear_acc_y",
+  "timestamp", "team_id", "session_id", "latitude", "longitude", "altitude",
+  "speed", "course", "satellites", "gps_timestamp", "acc_x", "acc_y", "acc_z",
+  "gyro_x", "gyro_y", "gyro_z", "mag_x", "mag_y", "mag_z", "status_mag",
+  "status_gyro", "status_acc", "status_sys", "pitch_rate", "roll_rate",
+  "yaw_rate", "pitch_angle", "roll_angle", "yaw_angle", "temperature",
+  "gravity_x", "gravity_y", "gravity_z", "abs_orientation_x",
+  "abs_orientation_y", "abs_orientation_z", "linear_acc_x", "linear_acc_y",
   "linear_acc_z",
 ] as const satisfies readonly (keyof TelemetryRow)[]
 
@@ -121,7 +90,8 @@ export class TelemetryService {
   private readonly baseUrl: string
 
   constructor() {
-    this.baseUrl = "https://00jbtatxmh.execute-api.eu-west-1.amazonaws.com/".replace(/\/$/, "")
+    // Utilize environment variables for infrastructure flexibility
+    this.baseUrl = (import.meta.env.VITE_API_BASE_URL || "https://00jbtatxmh.execute-api.eu-west-1.amazonaws.com").replace(/\/$/, "")
   }
 
   async getTelemetry(request: GetTelemetryRequest): Promise<GetTelemetryResponse> {
@@ -147,7 +117,7 @@ export class TelemetryService {
 
   async getTelemetryData(request: GetTelemetryRequest): Promise<TelemetryData[]> {
     const response = await this.getTelemetry(request)
-    return response.data.map((row) => this.toTelemetryData(row)).filter((row) => row !== null)
+    return response.data.map((row) => this.toTelemetryData(row)).filter((row): row is TelemetryData => row !== null)
   }
 
   async getLatestTelemetryData(request: GetTelemetryRequest): Promise<TelemetryData | null> {
@@ -168,7 +138,7 @@ export class TelemetryService {
     }
 
     return {
-      timestamp: new Date(row.timestamp).toISOString(),
+      timestamp: row.timestamp, // Preserved as integer
       latitude: row.latitude,
       longitude: row.longitude,
       speed: row.speed,
@@ -235,7 +205,7 @@ export class TelemetryService {
     }
 
     return TELEMETRY_COLUMNS.reduce((row, column) => {
-      row[column] = this.toNullableNumber(value[column], `data[${index}].${column}`)
+      row[column] = this.toNullableNumber(value[column], `data[${index}].${column}`) as any
       return row
     }, {} as TelemetryRow)
   }
