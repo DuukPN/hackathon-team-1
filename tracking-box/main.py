@@ -5,6 +5,9 @@ from config import (
     DEVICE_ID
 )
 
+import adafruit_bno055
+import board
+
 
 def main():
     mqtt_connection = mqtt_connection_builder.mtls_from_path(
@@ -24,9 +27,13 @@ def main():
 
     # TODO: Read sensor data, build payloads, and publish to IoT Core
 
+    i2c = board.I2C()
+    sensor = adafruit_bno055.BNO055_I2C(i2c)
+
     try:
         while True:
-            pass
+            print(sensor.euler)
+            print(sensor.gravity)
     except KeyboardInterrupt:
         print("Disconnecting...")
         mqtt_connection.disconnect().result()
