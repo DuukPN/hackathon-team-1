@@ -70,7 +70,7 @@ Add this to `~/.aws/config` (macOS/Linux) or `C:\Users\<you>\.aws\config` (Windo
 ```ini
 [sso-session synadia]
 sso_start_url = https://synadia.awsapps.com/start
-sso_region = eu-west-1
+sso_region = eu-central-1
 sso_registration_scopes = sso:account:access
 
 [profile syn-hackathon-team-1]
