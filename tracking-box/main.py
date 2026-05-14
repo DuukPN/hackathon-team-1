@@ -11,6 +11,43 @@ import time
 import json
 import serial
 import pynmea2
+import threading
+
+
+class GPSSensor:
+    def __init__(self, port, baud, timeout=None):
+        self.gps_sensor = serial.Serial(port, baud)
+
+        self.lat = 42
+        self.long = 42
+        self.alt = 42
+        self.speed = 42
+        self.course = 42
+        self.satellites = 42
+        self.time = 42
+
+        self.thread = threading.Thread(target=self.update_data)
+        self.thread.start()
+
+    def update_data(self):
+        while True:
+            gps_line = self.gps_sensor.readline().decode("ascii", errors="replace").strip()
+            data = pynmea2.parse(gps_line)
+            print(data)
+
+            if data.sentence_type == "RMC":
+                self.lat = data.latitude
+                self.long = data.longitude
+                self.speed = data.spd_over_grnd * 1.852
+                self.course = data.true_course
+                self.time = data.datetime.timestamp() * 1000
+
+            elif data.sentence_type == "GGA":
+                self.lat = data.latitude
+                self.long = data.longitude
+                self.alt = data.altitude
+                self.satellites = int(data.num_sats)
+                self.time = data.datetime.timestamp() * 1000
 
 
 def main():
@@ -36,15 +73,19 @@ def main():
     # Connect to GPS sensor
     port = "/dev/ttyACM0"
     baud = 9600
+    gps = GPSSensor(port, baud)
 
     # TODO: configure sensor settings: acc/gyro frequency, etc.
 
-    gps_sensor = serial.Serial(port, baud)
-
     try:
         while True:
-            gps_data = pynmea2.parse(gps_sensor.readline())
-            print(gps_data)
+            print(gps.lat,
+                gps.long,
+                gps.alt,
+                gps.speed,
+                gps.course,
+                gps.satellites,
+                gps.time,)
 
             status = imu_sensor.calibration_status
 
@@ -70,6 +111,16 @@ def main():
             mqtt_connection.publish(
                 topic=f"tracking-box/data",
                 payload=json.dumps({
+                    "timestamp": int(time.time() * 1000),
+                    "team_id": 1,
+                    "session_id": 1,
+                    "latitude": gps.lat,
+                    "longitude": gps.long,
+                    "altitude": gps.alt,
+                    "speed": gps.speed,
+                    "course": gps.course,
+                    "satellites": gps.satellites,
+                    "gps_timestamp": gps.time,
                     "status_sys": status_sys,
                     "status_gyro": status_gyro,
                     "status_acc": status_acc,
@@ -94,14 +145,22 @@ def main():
                     "abs_orientation_y": abs_orient_y,
                     "abs_orientation_z": abs_orient_z,
                     "abs_orientation_w": abs_orient_w,
+
+                    "pitch_rate": 0,
+                    "roll_rate": 0,
+                    "yaw_rate": 0,
+                    "pitch_angle": 0,
+                    "roll_angle": 0,
+                    "yaw_angle": 0,
                 }),
                 qos=mqtt.QoS.AT_LEAST_ONCE
             )
 
+            time.sleep(0.05)
+
     except KeyboardInterrupt:
         print("Disconnecting...")
         mqtt_connection.disconnect().result()
-        gps_sensor.close()
 
 
 if __name__ == "__main__":
