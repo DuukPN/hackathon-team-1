@@ -33,21 +33,28 @@ class GPSSensor:
         while True:
             gps_line = self.gps_sensor.readline().decode("ascii", errors="replace").strip()
             data = pynmea2.parse(gps_line)
+
             print(data)
 
             if data.sentence_type == "RMC":
                 self.lat = data.latitude
                 self.long = data.longitude
-                self.speed = data.spd_over_grnd * 1.852
-                self.course = data.true_course
-                self.time = data.datetime.timestamp() * 1000
+                self.speed = (data.spd_over_grnd if data.spd_over_grnd else 0) * 1.852
+                self.course = (data.true_course if data.true_course else 0)
+                try:
+                    self.time = data.datetime.timestamp() * 1000
+                except:
+                    pass
 
             elif data.sentence_type == "GGA":
                 self.lat = data.latitude
                 self.long = data.longitude
-                self.alt = data.altitude
+                self.alt = (data.altitude if data.altitude else 0)
                 self.satellites = int(data.num_sats)
-                self.time = data.datetime.timestamp() * 1000
+                try:
+                    self.time = data.datetime.timestamp() * 1000
+                except:
+                    pass
 
 
 def main():
@@ -79,22 +86,17 @@ def main():
 
     try:
         while True:
-            print(gps.lat,
-                gps.long,
-                gps.alt,
-                gps.speed,
-                gps.course,
-                gps.satellites,
-                gps.time,)
+            print(
+                f"Lat: {gps.lat:.6f}°  "
+                f"Lon: {gps.long:.6f}°  "
+                f"Alt: {gps.alt:.1f}m  "
+                f"Speed: {gps.speed:.1f}kts  "
+                f"Course: {gps.course:.1f}°  "
+                f"Sats: {gps.satellites}  "
+                f"Time: {gps.time}  "
+            )
 
             status = imu_sensor.calibration_status
-
-            if not all(s == 3 for s in status):
-                print(("Status degraded!!!\n"
-                       "  System: %d\n"
-                       "  Gyro:   %d\n"
-                       "  Accel:  %d\n"
-                       "  Mag:    %d") % status)
 
             status_sys, status_gyro, status_acc, status_mag = status
 
@@ -156,7 +158,7 @@ def main():
                 qos=mqtt.QoS.AT_LEAST_ONCE
             )
 
-            time.sleep(0.05)
+            time.sleep(1)
 
     except KeyboardInterrupt:
         print("Disconnecting...")
