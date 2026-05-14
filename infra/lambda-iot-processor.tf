@@ -38,6 +38,7 @@ resource "aws_lambda_function" "iot_processor" {
       TABLE_NAME                    = "telemetry"
       SHARED_ROLE_ARN               = var.shared_role_arn
       SHARED_ATHENA_OUTPUT_LOCATION = var.shared_athena_output_location
+      INSERT_DUMMY_TELEMETRY_ROW = "true"
     }
   }
 }
@@ -145,7 +146,8 @@ resource "aws_iam_role_policy" "iot_topic_rule_sqs" {
 
 # Event source mapping: SQS queue triggers Lambda
 resource "aws_lambda_event_source_mapping" "sqs_to_lambda" {
-  event_source_arn = aws_sqs_queue.telemetry_messages.arn
-  function_name    = aws_lambda_function.iot_processor.function_name
-  batch_size       = 10
+  event_source_arn        = aws_sqs_queue.telemetry_messages.arn
+  function_name           = aws_lambda_function.iot_processor.function_name
+  batch_size              = 10
+  function_response_types = ["ReportBatchItemFailures"]
 }
