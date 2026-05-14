@@ -7,6 +7,7 @@ Wants=network-online.target
 Type=simple
 User=pi
 WorkingDirectory=/home/pi/tracking-box
+Environment=BLINKA_MCP2221=1
 ExecStart=/home/pi/tracking-box/.venv/bin/python -u main.py
 Restart=always
 RestartSec=5

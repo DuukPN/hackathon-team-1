@@ -1,2 +1,5 @@
 awsiotsdk
 pyserial
+adafruit-blinka
+adafruit-circuitpython-bno055
+hidapi
