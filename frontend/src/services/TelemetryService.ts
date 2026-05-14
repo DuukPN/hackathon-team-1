@@ -120,8 +120,8 @@ const TELEMETRY_COLUMNS = [
 export class TelemetryService {
   private readonly baseUrl: string
 
-  constructor(baseUrl = import.meta.env.VITE_API_URL) {
-    this.baseUrl = baseUrl.replace(/\/$/, "")
+  constructor() {
+    this.baseUrl = "https://00jbtatxmh.execute-api.eu-west-1.amazonaws.com/".replace(/\/$/, "")
   }
 
   async getTelemetry(request: GetTelemetryRequest): Promise<GetTelemetryResponse> {

@@ -1,33 +1,9 @@
 import { useEffect, useState, useRef } from "react";
 import { telemetryService, type LapData, type TelemetryData } from "./services/TelemetryService";
 
-// Coordinate boundary for the Zandvoort Start/Finish line
 const FINISH_LINE_START = { lat: 52.3888, lon: 4.5422 };
 const FINISH_LINE_END = { lat: 52.3885, lon: 4.5428 };
-const ATHENA_LOOKBACK_MS = 2 * 1000;
 
-// Zandvoort approximate racing line points (Adjusted for better accuracy)
-const CIRCUIT_POINTS = [
-  { lat: 52.3888, lon: 4.5422 }, // Start/Finish
-  { lat: 52.3865, lon: 4.5424 }, // Straight
-  { lat: 52.3846, lon: 4.5426 }, // Tarzanbocht
-  { lat: 52.3837, lon: 4.5447 }, // Gerlachbocht
-  { lat: 52.3828, lon: 4.5458 }, // Hugenholtzbocht
-  { lat: 52.3822, lon: 4.5435 }, // Hunserug
-  { lat: 52.3824, lon: 4.5401 }, // Rob Slotemakerbocht
-  { lat: 52.3831, lon: 4.5367 }, // Scheivlak
-  { lat: 52.3841, lon: 4.5348 }, // Mastersbocht
-  { lat: 52.3854, lon: 4.5350 }, // Bocht 9
-  { lat: 52.3866, lon: 4.5368 }, // Bocht 10
-  { lat: 52.3878, lon: 4.5375 }, // Hans Ernst Bocht
-  { lat: 52.3891, lon: 4.5385 }, // Kumhobocht
-  { lat: 52.3895, lon: 4.5408 }, // Arie Luyendykbocht
-  { lat: 52.3888, lon: 4.5422 }, // Start/Finish (loop closure)
-];
-
-// Helper function: Checks if two line segments intersect
-// P0-P1 is the car's movement segment
-// P2-P3 is the Finish line segment
 function checkLineIntersection(
   p0_x: number, p0_y: number, p1_x: number, p1_y: number,
   p2_x: number, p2_y: number, p3_x: number, p3_y: number
@@ -36,7 +12,7 @@ function checkLineIntersection(
   const s2_x = p3_x - p2_x, s2_y = p3_y - p2_y;
 
   const denominator = (-s2_x * s1_y + s1_x * s2_y);
-  if (denominator === 0) return false; // collinear
+  if (denominator === 0) return false;
 
   const s = (-s1_y * (p0_x - p2_x) + s1_x * (p0_y - p2_y)) / denominator;
   const t = (s2_x * (p0_y - p2_y) - s2_y * (p0_x - p2_x)) / denominator;
@@ -50,121 +26,91 @@ export function useTelemetry() {
   const [laps, setLaps] = useState<LapData[]>([]);
   const [currentLapTime, setCurrentLapTime] = useState(0);
 
-  // References to keep state across intervals without closure issues
+  const lastFetchTimestamp = useRef<number>(0);
+  const isFetching = useRef(false);
+  
   const lapCount = useRef(0);
   const bestLapTime = useRef(Infinity);
-  const prevPosition = useRef<{ lat: number, lon: number } | null>(null);
-  const lapStartTime = useRef<number>(Date.now());
-  const circuitProgress = useRef(0);
-  const isFetchingTelemetry = useRef(false);
+  const prevPosition = useRef<{ lat: number; lon: number } | null>(null);
+  const lapStartTime = useRef<number | null>(null);
 
   useEffect(() => {
-    let t = 0;
-    
-    // Updates UI timer cleanly
-    const clockInterval = setInterval(() => {
-       setCurrentLapTime(Date.now() - lapStartTime.current);
-    }, 100);
+    const fetchTelemetry = async () => {
+      if (isFetching.current) return;
+      isFetching.current = true;
 
-    const dataInterval = setInterval(async () => {
-      let currentData: TelemetryData | null = null;
-      if (!isFetchingTelemetry.current) {
-        try {
-          isFetchingTelemetry.current = true;
-          currentData = await telemetryService.getLatestTelemetryData({
-            startTimestamp: Date.now() - ATHENA_LOOKBACK_MS,
-            endTimestamp: Date.now(),
-            limit: 1000,
+      try {
+        const newPoints = await telemetryService.getTelemetryData({
+          startTimestamp: Date.now() - 2 * 1000, // Fetch last 5 minutes of data to ensure we capture any missed points
+          endTimestamp: Date.now(),
+          limit: 5000, 
+        });
+
+        if (newPoints.length > 0) {
+          lastFetchTimestamp.current = new Date(newPoints[newPoints.length - 1].timestamp).getTime() + 1;
+
+          setData((prev) => {
+            const combined = [...prev, ...newPoints];
+            return combined.slice(-5000); // Prevent memory leaks by maintaining a rolling window
           });
-        } catch (e) {
-          // Ignored
-        } finally {
-          isFetchingTelemetry.current = false;
-        }
-      }
-
-      // If no valid data returned, generate mock data mimicking loop movements
-      if (!currentData) {
-         t += 0.1;
-
-         // Simulate driving around the circuit (FASTER: ~10 seconds per lap!)
-         circuitProgress.current += 0.01; 
-         if (circuitProgress.current >= 1) {
-           circuitProgress.current -= 1;
-         }
-
-         // Interpolate between CIRCUIT_POINTS
-         const totalSegments = CIRCUIT_POINTS.length - 1;
-         const scaledProgress = circuitProgress.current * totalSegments;
-         const segmentIndex = Math.floor(scaledProgress);
-         const segmentProgress = scaledProgress - segmentIndex;
-
-         const pA = CIRCUIT_POINTS[segmentIndex];
-         const pB = CIRCUIT_POINTS[segmentIndex + 1] || CIRCUIT_POINTS[0];
-
-         const mockLat = pA.lat + (pB.lat - pA.lat) * segmentProgress;
-         const mockLon = pA.lon + (pB.lon - pA.lon) * segmentProgress;
-
-         currentData = {
-           timestamp: new Date().toISOString(),
-           latitude: mockLat,
-           longitude: mockLon,
-           speed: Math.max(0, 150 + 80 * Math.sin(circuitProgress.current * Math.PI * 10) + Math.random() * 5),
-           acc_x: Math.sin(t * 2) * 1.5 + (Math.random() - 0.5) * 0.5,
-           acc_y: Math.cos(t) * 1.5 + (Math.random() - 0.5) * 0.5,
-         };
-      }
-
-      // Crossing Detection Logic
-      if (prevPosition.current) {
-        // Real tracking: math intersection between points
-        const crossedReal = checkLineIntersection(
-          prevPosition.current.lat, prevPosition.current.lon,
-          currentData.latitude, currentData.longitude,
-          FINISH_LINE_START.lat, FINISH_LINE_START.lon,
-          FINISH_LINE_END.lat, FINISH_LINE_END.lon
-        );
-
-        if (crossedReal) {
-          const now = Date.now();
-          const currentLapMs = now - lapStartTime.current;
           
-          // Debounce safeguard: Ignore crossings that are less than 5 seconds apart
-          if (currentLapMs > 5000) {
-            lapCount.current += 1;
+          setLatest(newPoints[newPoints.length - 1]);
 
-            const previousBestLapTime = bestLapTime.current;
-            if (lapCount.current === 1 || currentLapMs < bestLapTime.current) {
-              bestLapTime.current = currentLapMs;
+          newPoints.forEach((point) => {
+            const ptTime = new Date(point.timestamp).getTime();
+            if (!lapStartTime.current) lapStartTime.current = ptTime;
+
+            if (prevPosition.current) {
+              const crossed = checkLineIntersection(
+                prevPosition.current.lat,
+                prevPosition.current.lon,
+                point.latitude,
+                point.longitude,
+                FINISH_LINE_START.lat,
+                FINISH_LINE_START.lon,
+                FINISH_LINE_END.lat,
+                FINISH_LINE_END.lon
+              );
+
+              if (crossed) {
+                const lapMs = ptTime - lapStartTime.current;
+                // Debounce threshold (5 seconds) to prevent false multiple triggers on the line
+                if (lapMs > 5000) {
+                  lapCount.current += 1;
+                  const prevBest = bestLapTime.current;
+                  if (lapCount.current === 1 || lapMs < bestLapTime.current) {
+                    bestLapTime.current = lapMs;
+                  }
+
+                  setLaps((prevLaps) => [
+                    ...prevLaps,
+                    telemetryService.toLapData(lapCount.current, lapMs, prevBest),
+                  ]);
+
+                  lapStartTime.current = ptTime;
+                }
+              }
             }
+            prevPosition.current = { lat: point.latitude, lon: point.longitude };
+          });
 
-            setLaps(prev => [
-              ...prev,
-              telemetryService.toLapData(lapCount.current, currentLapMs, previousBestLapTime),
-            ]);
-
-            // Reset start time to measure the next lap
-            lapStartTime.current = now;
+          // Calculate current ongoing lap time relative to the most recently fetched data point
+          if (lapStartTime.current) {
+            const latestPtTime = new Date(newPoints[newPoints.length - 1].timestamp).getTime();
+            setCurrentLapTime(Math.max(0, latestPtTime - lapStartTime.current));
           }
         }
+      } catch (e) {
+        console.error("Telemetry fetch execution failed:", e);
+      } finally {
+        isFetching.current = false;
       }
-
-      // Store previous position for the next iteration
-      prevPosition.current = { lat: currentData.latitude, lon: currentData.longitude };
-
-      setLatest(currentData);
-      setData((prev) => {
-        const next = [...prev, currentData!];
-        // Increase saved datapoints to draw a longer line/map curve if desired
-        return next.length > 100 ? next.slice(next.length - 100) : next;
-      });
-
-    }, 5000);
-
-    return () => {
-       clearInterval(dataInterval);
-       clearInterval(clockInterval);
     };
+
+    fetchTelemetry();
+    const intervalId = setInterval(fetchTelemetry, 2000);
+
+    return () => clearInterval(intervalId);
   }, []);
 
   return { data, latest, laps, currentLapTime };
