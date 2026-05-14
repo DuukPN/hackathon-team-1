@@ -8,6 +8,7 @@ from config import (
 import adafruit_bno055
 import board
 import time
+import json
 
 
 def main():
@@ -37,9 +38,11 @@ def main():
             print(sensor.gravity)
             mqtt_connection.publish(
                 topic=f"tracking-box/data",
-                payload=str({
-                    "euler": sensor.euler,
-                    "gravity": sensor.gravity
+                payload=json.dumps({
+                    "data": str({
+                        "euler": sensor.euler,
+                        "gravity": sensor.gravity
+                    })
                 }),
                 qos=mqtt.QoS.AT_LEAST_ONCE
             )
