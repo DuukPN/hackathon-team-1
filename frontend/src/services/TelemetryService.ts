@@ -40,6 +40,23 @@ export type TelemetryRow = {
   linear_acc_z: number | null
 }
 
+export type TelemetryData = {
+  timestamp: string
+  latitude: number
+  longitude: number
+  speed: number
+  acc_x: number
+  acc_y: number
+}
+
+export type LapData = {
+  id: number
+  time: string
+  timeMs: number
+  diff: string
+  status: "fastest" | "good" | "worse" | "normal"
+}
+
 export type GetTelemetryRequest = {
   startTimestamp: number
   endTimestamp: number
@@ -126,6 +143,55 @@ export class TelemetryService {
     }
 
     return this.toGetTelemetryResponse(body)
+  }
+
+  async getTelemetryData(request: GetTelemetryRequest): Promise<TelemetryData[]> {
+    const response = await this.getTelemetry(request)
+    return response.data.map((row) => this.toTelemetryData(row)).filter((row) => row !== null)
+  }
+
+  async getLatestTelemetryData(request: GetTelemetryRequest): Promise<TelemetryData | null> {
+    const rows = await this.getTelemetryData(request)
+    return rows.at(-1) ?? null
+  }
+
+  toTelemetryData(row: TelemetryRow): TelemetryData | null {
+    if (
+      row.timestamp === null ||
+      row.latitude === null ||
+      row.longitude === null ||
+      row.speed === null ||
+      row.acc_x === null ||
+      row.acc_y === null
+    ) {
+      return null
+    }
+
+    return {
+      timestamp: new Date(row.timestamp).toISOString(),
+      latitude: row.latitude,
+      longitude: row.longitude,
+      speed: row.speed,
+      acc_x: row.acc_x,
+      acc_y: row.acc_y,
+    }
+  }
+
+  toLapData(id: number, timeMs: number, bestLapTimeMs: number): LapData {
+    const diffMs = timeMs - bestLapTimeMs
+    const diffSecs = Math.abs(diffMs / 1000)
+    const dMin = Math.floor(diffSecs / 60)
+    const dSec = (diffSecs % 60).toFixed(2).padStart(5, "0")
+    const minutes = Math.floor(timeMs / 60000)
+    const seconds = ((timeMs % 60000) / 1000).toFixed(2).padStart(5, "0")
+
+    return {
+      id,
+      time: `${minutes}:${seconds}`,
+      timeMs,
+      diff: id <= 1 ? "" : `${diffMs < 0 ? "-" : "+"}${dMin}:${dSec}`,
+      status: id <= 1 ? "normal" : diffMs < 0 ? "fastest" : "worse",
+    }
   }
 
   private validateRequest(request: GetTelemetryRequest): void {
