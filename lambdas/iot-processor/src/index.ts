@@ -51,10 +51,10 @@ const TELEMETRY_COLUMNS = [
   "abs_orientation_x",
   "abs_orientation_y",
   "abs_orientation_z",
-  "abs_orientation_w",
   "linear_acc_x",
   "linear_acc_y",
   "linear_acc_z",
+  "abs_orientation_w",
 ] as const;
 
 // ColumnName is the union of all valid table column names.
@@ -92,14 +92,6 @@ type MqttTelemetryMessage = {
   status_gyro: CalibrationStatus;
   status_acc: CalibrationStatus;
   status_sys: CalibrationStatus;
-
-  // Derived orientation/rate fields.
-  pitch_rate: number;
-  roll_rate: number;
-  yaw_rate: number;
-  pitch_angle: number;
-  roll_angle: number;
-  yaw_angle: number;
 
   // Additional IMU/environment fields.
   temperature: number;
@@ -275,14 +267,6 @@ function assertTelemetryMessage(value: unknown): asserts value is MqttTelemetryM
   assertCalibrationStatus(value.status_acc, "status_acc");
   assertCalibrationStatus(value.status_sys, "status_sys");
 
-  // Validate derived orientation/rate fields.
-  assertNumber(value.pitch_rate, "pitch_rate");
-  assertNumber(value.roll_rate, "roll_rate");
-  assertNumber(value.yaw_rate, "yaw_rate");
-  assertNumber(value.pitch_angle, "pitch_angle");
-  assertNumber(value.roll_angle, "roll_angle");
-  assertNumber(value.yaw_angle, "yaw_angle");
-
   // Validate additional IMU/environment fields.
   assertNumber(value.temperature, "temperature");
   assertNumber(value.gravity_x, "gravity_x");
@@ -299,6 +283,15 @@ function assertTelemetryMessage(value: unknown): asserts value is MqttTelemetryM
 
 // Transform incoming MQTT JSON into one flat storage row.
 function toStorageRow(message: MqttTelemetryMessage): TelemetryStorageRow {
+  let qx = message.abs_orientation_x
+  let qy = message.abs_orientation_y
+  let qz = message.abs_orientation_z
+  let qw = message.abs_orientation_w
+
+  let yaw = Math.atan2(2 * qy * qw - 2 * qx * qz , 1 - 2 * qy * qy - 2 * qz * qz)
+  let pitch = Math.asin(2 * qx * qy + 2 * qz * qw)
+  let roll = Math.atan2(2 * qx * qw - 2 * qy * qz , 1 - 2 * qx * qx - 2 * qz * qz)
+
   return {
     timestamp: message.timestamp,
     team_id: message.team_id,
@@ -323,12 +316,12 @@ function toStorageRow(message: MqttTelemetryMessage): TelemetryStorageRow {
     status_gyro: message.status_gyro,
     status_acc: message.status_acc,
     status_sys: message.status_sys,
-    pitch_rate: message.pitch_rate,
-    roll_rate: message.roll_rate,
-    yaw_rate: message.yaw_rate,
-    pitch_angle: message.pitch_angle,
-    roll_angle: message.roll_angle,
-    yaw_angle: message.yaw_angle,
+    pitch_rate: 0,
+    roll_rate: 0,
+    yaw_rate: 0,
+    pitch_angle: pitch,
+    roll_angle: roll,
+    yaw_angle: yaw,
     temperature: message.temperature,
     gravity_x: message.gravity_x,
     gravity_y: message.gravity_y,
