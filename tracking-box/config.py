@@ -1,6 +1,6 @@
 import os
 
-ENDPOINT = ""  # TODO: Get your IoT endpoint from AWS Console → IoT Core → Settings
+ENDPOINT = "a15srqpd4angli-ats.iot.eu-west-1.amazonaws.com" 
 CERT_DIR = os.environ.get("CERT_DIR", os.path.join(os.path.dirname(__file__), "certs"))
 CERT_PATH = os.path.join(CERT_DIR, "certificate.pem.crt")
 KEY_PATH = os.path.join(CERT_DIR, "private.pem.key")
