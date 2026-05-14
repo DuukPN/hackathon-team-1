@@ -1,5 +1,5 @@
 import { useTelemetry } from "./useTelemetry";
-import { MapContainer, TileLayer, Marker } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Polyline } from "react-leaflet";
 import L from "leaflet";
 import { TelemetryPage } from "./TelemetryPage";
 import {
@@ -12,7 +12,6 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-// Fix default Leaflet icon paths returning 404 in some React setups:
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
@@ -20,19 +19,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
-// Zandvoort Circuit roughly bounded coords for the center
 const ZANDVOORT_CENTER: [number, number] = [52.3888, 4.5422];
-
-// // An auto-pan utility component to smoothly guide the map as the car moves
-// function MapUpdater({ lat, lon }: { lat: number; lon: number }) {
-//   const map = useMap();
-//   useEffect(() => {
-//     if (lat && lon) {
-//       map.setView([lat, lon], map.getZoom());
-//     }
-//   }, [lat, lon, map]);
-//   return null;
-// }
 
 export function App() {
   if (window.location.pathname === "/telemetry") {
@@ -50,20 +37,18 @@ export function App() {
   const lat = latest?.latitude || ZANDVOORT_CENTER[0];
   const lon = latest?.longitude || ZANDVOORT_CENTER[1];
 
-  // Recharts needs an object structure
   const startTime = data.length > 0 ? new Date(data[0].timestamp).getTime() : 0;
   const chartData = data.map((d) => {
     const elapsedSeconds = startTime ? (new Date(d.timestamp).getTime() - startTime) / 1000 : 0;
     return {
-      time: elapsedSeconds.toFixed(1), // Show seconds elapsed like "12.5"
+      time: elapsedSeconds.toFixed(1),
       speed: d.speed,
     };
   });
 
-  // // Create polyline nodes for map (the trace of the car)
-  // const pathPositions: [number, number][] = data.map(d => [d.latitude, d.longitude]);
+  const pathPositions: [number, number][] = data.map(d => [d.latitude, d.longitude]);
 
-    return (
+  return (
     <div className="min-h-screen p-4 bg-[#003530] text-white font-mono flex flex-col gap-6">
       {/* Header */}
       <div className="flex justify-between items-center">
@@ -88,12 +73,14 @@ export function App() {
               scrollWheelZoom={true}
               style={{ height: "100%", width: "100%", zIndex: 0 }}
             >
-              {/* Satellite map to show the track clearly */}
               <TileLayer
                 attribution="Tiles &copy; Esri"
                 url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
               />
-              <Marker position={[lat, lon]} />
+              {pathPositions.length > 0 && (
+                <Polyline positions={pathPositions} color="#35fdad" weight={4} opacity={0.8} />
+              )}
+              {latest && <Marker position={[lat, lon]} />}
             </MapContainer>
           </div>
         </div>
@@ -117,7 +104,7 @@ export function App() {
             </div>
           </div>
 
-          {/* Laps List replaces Speed Graph here */}
+          {/* Laps List */}
           <div className="border border-white rounded-md p-4 bg-black flex-grow flex flex-col overflow-hidden max-h-[340px]">
             <h2 className="text-[#35fdad] text-sm mb-3">Lap Times</h2>
             
@@ -131,10 +118,10 @@ export function App() {
                 let timeColor = "text-white";
                 let diffColor = "text-gray-400";
                 if (lap.status === "fastest") {
-                  timeColor = "text-[#f94df9]"; // Purple
+                  timeColor = "text-[#f94df9]";
                   diffColor = "text-[#f94df9]";
                 } else if (lap.status === "worse") {
-                  diffColor = "text-orange-500"; // Orange
+                  diffColor = "text-orange-500";
                 }
 
                 return (
@@ -186,5 +173,5 @@ export function App() {
         </div>
       </div>
     </div>
-  )
+  );
 }

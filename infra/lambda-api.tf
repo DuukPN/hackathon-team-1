@@ -88,13 +88,7 @@ resource "aws_apigatewayv2_integration" "api" {
 
 resource "aws_apigatewayv2_route" "api_hello" {
   api_id    = aws_apigatewayv2_api.api.id
-  route_key = "GET /api/hello"
-  target    = "integrations/${aws_apigatewayv2_integration.api.id}"
-}
-
-resource "aws_apigatewayv2_route" "api_get_telemetry" {
-  api_id    = aws_apigatewayv2_api.api.id
-  route_key = "GET /api/get_telemetry"
+  route_key = "$default"
   target    = "integrations/${aws_apigatewayv2_integration.api.id}"
 }
 
