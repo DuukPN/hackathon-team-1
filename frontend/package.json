@@ -10,11 +10,15 @@
     "apply": "pnpm build && aws s3 sync dist s3://hackathon-team-1-frontend --profile syn-hackathon-team-1 --region eu-west-1 --delete"
   },
   "dependencies": {
+    "leaflet": "^1.9.4",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "react-leaflet": "^5.0.0",
+    "recharts": "^3.8.1"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.4",
+    "@types/leaflet": "^1.9.21",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "@vitejs/plugin-react": "^4.4.0",
