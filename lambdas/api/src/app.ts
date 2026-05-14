@@ -15,6 +15,7 @@ let cachedAthenaClientExpiresAt = 0;
 
 const DEFAULT_TELEMETRY_LIMIT = 1000;
 const MAX_TELEMETRY_LIMIT = 10_000;
+const TEAM_ID_FILTER = 1;
 
 const TELEMETRY_COLUMNS = [
   "timestamp",
@@ -165,7 +166,8 @@ function buildTelemetrySelectSql(startTimestamp: number, endTimestamp: number, l
   return [
     `SELECT ${columns}`,
     `FROM ${getAthenaTableName()}`,
-    `WHERE ${quoteIdentifier("timestamp")} BETWEEN ${startTimestamp} AND ${endTimestamp}`,
+    `WHERE ${quoteIdentifier("team_id")} = ${TEAM_ID_FILTER}`,
+    `AND ${quoteIdentifier("timestamp")} BETWEEN ${startTimestamp} AND ${endTimestamp}`,
     `ORDER BY ${quoteIdentifier("timestamp")} ASC`,
     `LIMIT ${limit}`,
   ].join(" ");
