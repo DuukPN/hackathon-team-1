@@ -34,6 +34,7 @@ def main():
         while True:
             print(sensor.euler)
             print(sensor.gravity)
+
     except KeyboardInterrupt:
         print("Disconnecting...")
         mqtt_connection.disconnect().result()
