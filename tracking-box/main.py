@@ -13,6 +13,7 @@ import serial
 import pynmea2
 import threading
 from scipy.spatial.transform import Rotation
+import numpy as np
 
 
 class GPSSensor:
@@ -35,7 +36,7 @@ class GPSSensor:
             gps_line = self.gps_sensor.readline().decode("ascii", errors="replace").strip()
             data = pynmea2.parse(gps_line)
 
-            print(data)
+            # print(data)
 
             if data.sentence_type == "RMC":
                 self.lat = data.latitude
@@ -99,6 +100,9 @@ def main():
 
             status = imu_sensor.calibration_status
 
+            if not all(x == 3 for x in status):
+                print(status)
+
             status_sys, status_gyro, status_acc, status_mag = status
 
             acc_x, acc_y, acc_z = imu_sensor.acceleration
@@ -110,9 +114,14 @@ def main():
             grav_x, grav_y, grav_z = imu_sensor.gravity
             lin_acc_x, lin_acc_y, lin_acc_z = imu_sensor.linear_acceleration
             quat = imu_sensor.quaternion
+            qx, qy, qz, qw = quat
             abs_orient_x, abs_orient_y, abs_orient_z, abs_orient_w = quat
-            print(Rotation.from_quat(quat, degrees=True).as_euler("zyx", degrees=True))
+            print(Rotation.from_quat(quat).as_euler("zyx", degrees=True))
             print(f"(sensor value: {imu_sensor.euler})")
+            yaw = np.atan2(2 * qy * qw - 2 * qx * qz, 1 - 2 * qy * qy - 2 * qz * qz)
+            pitch = np.asin(2 * qx * qy + 2 * qz * qw)
+            roll = np.atan2(2 * qx * qw - 2 * qy * qz, 1 - 2 * qx * qx - 2 * qz * qz)
+            print(np.rad2deg((yaw, pitch, roll)))
 
             mqtt_connection.publish(
                 topic=f"tracking-box/data",

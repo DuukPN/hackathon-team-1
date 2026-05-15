@@ -153,8 +153,8 @@ export function App() {
             <span className="absolute text-[12px] text-gray-400 top-[33.33%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-[#0a0a0a] px-1 z-0">1G</span>
 
             {gForceTrail.map((d, i, arr) => {
-              const gx = (d.acc_x || 0) / 9.81;
-              const gy = (d.acc_y || 0) / 9.81;
+              const gx = (d.acc_z || 0) / 9.81;
+              const gy = (d.acc_x || 0) / 9.81;
               const dotLeft = Math.max(0, Math.min(100, 50 + (gx / 3) * 50));
               const dotTop = Math.max(0, Math.min(100, 50 + (gy / 3) * 50));
               const isLatest = i === arr.length - 1;

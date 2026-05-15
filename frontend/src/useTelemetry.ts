@@ -153,8 +153,11 @@ export function useTelemetry() {
       isFetching.current = true;
 
       try {
+        console.log("Fetching telemetry data from", new Date(lastFetchTimestamp.current).toISOString(), "to", new Date().toISOString());
         const rawPoints = await telemetryService.getTelemetryData({
-          startTimestamp: lastFetchTimestamp.current,
+          // startTimestamp: 1778774454000,
+          // endTimestamp: 1778776254000,
+          startTimestamp: Date.now() - 30 * 60 * 1000,
           endTimestamp: Date.now(),
           limit: 10000, 
           sessionId: sessionIdFilter,

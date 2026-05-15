@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PI_HOST="pi@hackathon-pi-1.local"
+PI_HOST="pi@100.121.35.98"
 [[ -f "$SCRIPT_DIR/../.env" ]] && source "$SCRIPT_DIR/../.env"
 REMOTE_DIR="/home/pi/tracking-box"
 SSH_OPTS="-o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new"
