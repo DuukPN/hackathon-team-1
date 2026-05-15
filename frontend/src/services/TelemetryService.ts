@@ -49,6 +49,8 @@ export type TelemetryData = {
   acc_x: number
   acc_y: number
   acc_z: number
+  pitch_angle: number
+  yaw_angle: number
   temperature: number
 }
 
@@ -144,6 +146,8 @@ export class TelemetryService {
       row.acc_x === null ||
       row.acc_y === null ||
       row.acc_z === null ||
+      row.pitch_angle === null ||
+      row.yaw_angle === null ||
       row.temperature === null
     ) {
       return null
@@ -158,6 +162,8 @@ export class TelemetryService {
       acc_x: row.acc_x,
       acc_y: row.acc_y,
       acc_z: row.acc_z,
+      pitch_angle: row.pitch_angle,
+      yaw_angle: row.yaw_angle,
       temperature: row.temperature,
     }
   }

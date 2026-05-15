@@ -1,11 +1,47 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MapContainer, TileLayer, CircleMarker, Polyline, Tooltip } from "react-leaflet";
+import {
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ReferenceDot,
+  ReferenceLine,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { TestLapData, type HeatmapType } from "./TestLapData";
-import type { TelemetryData } from "./services/TelemetryService";
+import { telemetryService, type TelemetryData } from "./services/TelemetryService";
 
 const ZANDVOORT_CENTER: [number, number] = [52.3880, 4.5440];
 const TEST_LAP = new TestLapData();
 const INTERPOLATED_POINTS_PER_SEGMENT = 14;
+const REAL_LAPS_STORAGE_KEY = "team-1-laps";
+const DUMMY_LAPS_STORAGE_KEY = "team-1-dummy-laps";
+
+type ReplayDataSource = "dummy" | "real";
+
+type StoredReplayLap = {
+  id: number;
+  time: string;
+  timeMs: number;
+  diff: string;
+  status: string;
+  sessionId: number;
+  startTimestamp: number;
+  endTimestamp: number;
+};
+
+type ReplayLapOption = StoredReplayLap & {
+  label: string;
+};
+
+type OrientationChartPoint = {
+  time: string;
+  pitch: number;
+  yaw: number;
+};
 
 function clampIndex(index: number, length: number) {
   if (length === 0) return 0;
@@ -42,6 +78,80 @@ function getGForceArray(point: TelemetryData) {
   return [point.acc_x / 9.81, point.acc_y / 9.81, point.acc_z / 9.81];
 }
 
+function isStoredReplayLap(value: unknown): value is StoredReplayLap {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+
+  const lap = value as Record<string, unknown>;
+  return (
+    typeof lap.id === "number" &&
+    typeof lap.time === "string" &&
+    typeof lap.timeMs === "number" &&
+    typeof lap.diff === "string" &&
+    typeof lap.status === "string" &&
+    typeof lap.sessionId === "number" &&
+    typeof lap.startTimestamp === "number" &&
+    typeof lap.endTimestamp === "number"
+  );
+}
+
+function loadStoredReplayLaps(storageKey: string): StoredReplayLap[] {
+  try {
+    const raw = window.localStorage.getItem(storageKey);
+    if (!raw) return [];
+
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed.filter(isStoredReplayLap);
+  } catch (error) {
+    console.warn("Failed to load replay laps from localStorage", { storageKey, error });
+    return [];
+  }
+}
+
+function ensureDummyReplayLaps(): StoredReplayLap[] {
+  const existingLaps = loadStoredReplayLaps(DUMMY_LAPS_STORAGE_KEY);
+  if (existingLaps.length > 0) return existingLaps;
+
+  const dummyLap: StoredReplayLap = {
+    id: 1,
+    time: "1:32.00",
+    timeMs: 92_000,
+    diff: "",
+    status: "normal",
+    sessionId: 1,
+    startTimestamp: TEST_LAP.points[0].timestamp,
+    endTimestamp: TEST_LAP.points[TEST_LAP.points.length - 1].timestamp,
+  };
+
+  window.localStorage.setItem(DUMMY_LAPS_STORAGE_KEY, JSON.stringify([dummyLap]));
+  return [dummyLap];
+}
+
+function toReplayLapOptions(laps: StoredReplayLap[]): ReplayLapOption[] {
+  return laps.map((lap) => ({
+    ...lap,
+    label: `Lap ${lap.id} - ${lap.time}`,
+  }));
+}
+
+function getLapKey(lap: StoredReplayLap): string {
+  return `${lap.sessionId}:${lap.startTimestamp}:${lap.endTimestamp}`;
+}
+
+function getOrientationChartData(points: TelemetryData[]): OrientationChartPoint[] {
+  if (points.length === 0) return [];
+
+  const firstTimestamp = points[0].timestamp;
+  return points.map((point) => ({
+    time: ((point.timestamp - firstTimestamp) / 1000).toFixed(1),
+    pitch: point.pitch_angle,
+    yaw: point.yaw_angle,
+  }));
+}
+
 function DataPointTooltip({ point }: { point: TelemetryData }) {
   return (
     <Tooltip direction="top" offset={[0, -8]} opacity={1}>
@@ -60,14 +170,92 @@ function DataPointTooltip({ point }: { point: TelemetryData }) {
 export function ReplayPage() {
   const [heatmapType, setHeatmapType] = useState<HeatmapType>("speed");
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [dataSource, setDataSource] = useState<ReplayDataSource>("dummy");
+  const [selectedLapKey, setSelectedLapKey] = useState("");
+  const [realLapPoints, setRealLapPoints] = useState<TelemetryData[]>([]);
+  const [isLoadingLap, setIsLoadingLap] = useState(false);
+  const [lapError, setLapError] = useState<string | null>(null);
 
-  const lapPoints = useMemo(() => TEST_LAP.getInterpolatedPoints(INTERPOLATED_POINTS_PER_SEGMENT), []);
-  const heatmapSegments = useMemo(
-    () => TEST_LAP.getHeatmapSegments(heatmapType, INTERPOLATED_POINTS_PER_SEGMENT),
-    [heatmapType],
+  const lapOptions = useMemo(() => {
+    const laps = dataSource === "dummy" ? ensureDummyReplayLaps() : loadStoredReplayLaps(REAL_LAPS_STORAGE_KEY);
+    return toReplayLapOptions(laps);
+  }, [dataSource]);
+
+  const selectedLap = useMemo(
+    () => lapOptions.find((lap) => getLapKey(lap) === selectedLapKey) ?? lapOptions[0] ?? null,
+    [lapOptions, selectedLapKey],
   );
 
+  useEffect(() => {
+    if (!selectedLap) {
+      setSelectedLapKey("");
+      return;
+    }
+
+    const nextLapKey = getLapKey(selectedLap);
+    if (selectedLapKey !== nextLapKey) {
+      setSelectedLapKey(nextLapKey);
+    }
+  }, [selectedLap, selectedLapKey]);
+
+  useEffect(() => {
+    setSelectedIndex(0);
+    setLapError(null);
+
+    if (dataSource === "dummy") {
+      setRealLapPoints([]);
+      return;
+    }
+
+    if (!selectedLap) {
+      setRealLapPoints([]);
+      return;
+    }
+
+    let isCancelled = false;
+    setRealLapPoints([]);
+    setIsLoadingLap(true);
+
+    telemetryService.getTelemetryData({
+      startTimestamp: selectedLap.startTimestamp,
+      endTimestamp: selectedLap.endTimestamp,
+      limit: 10000,
+      sessionId: selectedLap.sessionId,
+    }).then((points) => {
+      if (isCancelled) return;
+      setRealLapPoints(points);
+      setLapError(points.length === 0 ? "No telemetry points found for this lap." : null);
+    }).catch((error) => {
+      if (isCancelled) return;
+      setRealLapPoints([]);
+      setLapError(error instanceof Error ? error.message : "Failed to load lap telemetry.");
+    }).finally(() => {
+      if (!isCancelled) {
+        setIsLoadingLap(false);
+      }
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [dataSource, selectedLap]);
+
+  const replayLap = useMemo(
+    () => dataSource === "dummy" ? TEST_LAP : new TestLapData(realLapPoints),
+    [dataSource, realLapPoints],
+  );
+  const lapPoints = useMemo(
+    () => replayLap.getInterpolatedPoints(INTERPOLATED_POINTS_PER_SEGMENT),
+    [replayLap],
+  );
+  const heatmapSegments = useMemo(
+    () => replayLap.getHeatmapSegments(heatmapType, INTERPOLATED_POINTS_PER_SEGMENT),
+    [heatmapType, replayLap],
+  );
+  const orientationChartData = useMemo(() => getOrientationChartData(lapPoints), [lapPoints]);
+
   const boundedIndex = clampIndex(selectedIndex, lapPoints.length);
+  const selectedOrientationPoint = orientationChartData[boundedIndex] ?? null;
   const selectedPoint = lapPoints[boundedIndex] ?? null;
   const gForce = getGForcePosition(selectedPoint);
 
@@ -119,7 +307,7 @@ export function ReplayPage() {
                   opacity={0.92}
                 />
               ))}
-              {TEST_LAP.points.map((point, index) => (
+              {replayLap.points.map((point, index) => (
                 <CircleMarker
                   key={`${point.timestamp}-${index}`}
                   center={[point.latitude, point.longitude]}
@@ -127,7 +315,7 @@ export function ReplayPage() {
                   pathOptions={{
                     color: "#000000",
                     weight: 1,
-                    fillColor: TEST_LAP.getPointHeatmapColor(point, heatmapType),
+                    fillColor: replayLap.getPointHeatmapColor(point, heatmapType),
                     fillOpacity: 1,
                   }}
                 >
@@ -151,6 +339,56 @@ export function ReplayPage() {
                 {`${boundedIndex + 1} / ${lapPoints.length} interpolated points`}
               </div>
             </div>
+
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+              <div className="flex flex-col gap-2">
+                <label htmlFor="replay-data-source" className="text-xs uppercase tracking-wider text-gray-400">
+                  Data source
+                </label>
+                <select
+                  id="replay-data-source"
+                  value={dataSource}
+                  onChange={(event) => setDataSource(event.target.value as ReplayDataSource)}
+                  className="h-11 rounded border border-gray-700 bg-[#111] px-3 text-white outline-none transition focus:border-[#35fdad]"
+                >
+                  <option value="dummy">Dummy data</option>
+                  <option value="real">Real-life data</option>
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label htmlFor="replay-lap" className="text-xs uppercase tracking-wider text-gray-400">
+                  Lap
+                </label>
+                <select
+                  id="replay-lap"
+                  value={selectedLap ? getLapKey(selectedLap) : ""}
+                  onChange={(event) => setSelectedLapKey(event.target.value)}
+                  disabled={lapOptions.length === 0}
+                  className="h-11 rounded border border-gray-700 bg-[#111] px-3 text-white outline-none transition focus:border-[#35fdad] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {lapOptions.length === 0 ? (
+                    <option value="">No laps saved</option>
+                  ) : (
+                    lapOptions.map((lap) => (
+                      <option key={getLapKey(lap)} value={getLapKey(lap)}>
+                        {lap.label}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+            </div>
+
+            {selectedLap ? (
+              <div className="rounded border border-gray-700 bg-[#111] p-3 text-xs leading-5 text-white/60">
+                <div>Start: {new Date(selectedLap.startTimestamp).toISOString()}</div>
+                <div>End: {new Date(selectedLap.endTimestamp).toISOString()}</div>
+                <div>Session: {selectedLap.sessionId}</div>
+                {isLoadingLap ? <div className="text-[#35fdad]">Loading real lap telemetry...</div> : null}
+                {lapError ? <div className="text-red-300">{lapError}</div> : null}
+              </div>
+            ) : null}
 
             <div className="flex flex-col gap-2">
               <label htmlFor="heatmap-type" className="text-xs uppercase tracking-wider text-gray-400">
@@ -205,6 +443,72 @@ export function ReplayPage() {
               <div className="rounded border border-gray-700 bg-[#111] p-3">
                 <div className="text-gray-400">Longitudinal</div>
                 <div className="text-xl font-bold">{gForce.gy.toFixed(2)}G</div>
+              </div>
+            </div>
+
+            <div className="rounded border border-gray-700 bg-[#111] p-4">
+              <div className="mb-3 text-xs uppercase tracking-wider text-gray-400">Pitch / Yaw</div>
+              <div className="h-48">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={orientationChartData} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                    <XAxis
+                      dataKey="time"
+                      stroke="#777"
+                      tick={{ fill: "#777", fontSize: 11 }}
+                      tickFormatter={(value) => `${value}s`}
+                      minTickGap={28}
+                    />
+                    <YAxis stroke="#aaa" tick={{ fill: "#aaa", fontSize: 11 }} />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    {selectedOrientationPoint ? (
+                      <ReferenceLine
+                        x={selectedOrientationPoint.time}
+                        stroke="#ffffff"
+                        strokeDasharray="4 4"
+                        strokeWidth={2}
+                      />
+                    ) : null}
+                    <Line
+                      type="monotone"
+                      dataKey="pitch"
+                      name="Pitch"
+                      stroke="#35fdad"
+                      strokeWidth={2}
+                      dot={false}
+                      isAnimationActive={false}
+                    />
+                    {selectedOrientationPoint ? (
+                      <ReferenceDot
+                        x={selectedOrientationPoint.time}
+                        y={selectedOrientationPoint.pitch}
+                        r={5}
+                        fill="#35fdad"
+                        stroke="#ffffff"
+                        strokeWidth={2}
+                      />
+                    ) : null}
+                    <Line
+                      type="monotone"
+                      dataKey="yaw"
+                      name="Yaw"
+                      stroke="#f94df9"
+                      strokeWidth={2}
+                      dot={false}
+                      isAnimationActive={false}
+                    />
+                    {selectedOrientationPoint ? (
+                      <ReferenceDot
+                        x={selectedOrientationPoint.time}
+                        y={selectedOrientationPoint.yaw}
+                        r={5}
+                        fill="#f94df9"
+                        stroke="#ffffff"
+                        strokeWidth={2}
+                      />
+                    ) : null}
+                  </LineChart>
+                </ResponsiveContainer>
               </div>
             </div>
           </section>
