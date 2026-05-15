@@ -35,7 +35,7 @@ export function useTelemetry() {
   const [latest, setLatest] = useState<TelemetryData | null>(null);
   const [laps, setLaps] = useState<ExtendedLapData[]>([]);
 
-  const lastFetchTimestamp = useRef<number>(0);
+  const lastFetchTimestamp = useRef<number>(Date.now() - 10 * 1000);
   const isFetching = useRef(false);
   
   const lapCount = useRef(0);
@@ -55,10 +55,11 @@ export function useTelemetry() {
       isFetching.current = true;
 
       try {
+        console.log("Fetching telemetry data from", new Date(lastFetchTimestamp.current).toISOString(), "to", new Date().toISOString());
         const rawPoints = await telemetryService.getTelemetryData({
           // startTimestamp: 1778774454000,
           // endTimestamp: 1778776254000,
-          startTimestamp: lastFetchTimestamp.current,
+          startTimestamp: Date.now() - 30 * 60 * 1000,
           endTimestamp: Date.now(),
           limit: 5000, 
         });
@@ -131,7 +132,7 @@ export function useTelemetry() {
     };
 
     fetchTelemetry();
-    const intervalId = setInterval(fetchTelemetry, 2000);
+    const intervalId = setInterval(fetchTelemetry, 5000);
 
     return () => clearInterval(intervalId);
   }, []);
