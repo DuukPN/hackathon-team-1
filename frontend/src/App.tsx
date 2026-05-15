@@ -132,7 +132,7 @@ export function App() {
             const gx = (d.acc_z || 0) / 9.81;
             const gy = (d.acc_x || 0) / 9.81;
             return Math.sqrt(gx * gx + gy * gy)
-          })}</h1>
+          })} G</h1>
 
           <div className="w-[300px] h-[300px] relative rounded-full overflow-hidden bg-[#0a0a0a] mt-4">
             <div className="absolute w-full h-[1px] bg-gray-700 top-1/2 left-0" />
@@ -168,8 +168,8 @@ export function App() {
               );
             })}
           </div>
-          <h3>Long.: {(gForceTrail.at(-1)?.acc_z || 0) / 9.81}G</h3>
-          <h3>Lat.:{(gForceTrail.at(-1)?.acc_x || 0) / 9.81}</h3>
+          <h3>Long.: {(gForceTrail.at(-1)?.acc_z || 0) / 9.81} G</h3>
+          <h3>Lat.: {(gForceTrail.at(-1)?.acc_x || 0) / 9.81} G</h3>
         </div>
 
         <div className="w-[400px] h-full shrink-0 border border-white rounded-md p-6 bg-black flex flex-col overflow-hidden shadow-lg shadow-black/50">
