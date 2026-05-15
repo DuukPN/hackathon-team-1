@@ -42,11 +42,14 @@ export type TelemetryRow = {
 
 export type TelemetryData = {
   timestamp: number
+  session_id: number
   latitude: number
   longitude: number
   speed: number
   acc_x: number
   acc_y: number
+  acc_z: number
+  temperature: number
 }
 
 export type LapData = {
@@ -61,12 +64,14 @@ export type GetTelemetryRequest = {
   startTimestamp: number
   endTimestamp: number
   limit?: number
+  sessionId?: number
 }
 
 export type GetTelemetryResponse = {
   start_timestamp: number
   end_timestamp: number
   limit: number
+  session_id?: number
   count: number
   data: TelemetryRow[]
 }
@@ -105,6 +110,10 @@ export class TelemetryService {
       url.searchParams.set("limit", String(request.limit))
     }
 
+    if (request.sessionId !== undefined) {
+      url.searchParams.set("session_id", String(request.sessionId))
+    }
+
     const response = await fetch(url)
     const body: unknown = await response.json()
 
@@ -128,22 +137,28 @@ export class TelemetryService {
   toTelemetryData(row: TelemetryRow): TelemetryData | null {
     if (
       row.timestamp === null ||
+      row.session_id === null ||
       row.latitude === null ||
       row.longitude === null ||
       row.speed === null ||
       row.acc_x === null ||
-      row.acc_y === null
+      row.acc_y === null ||
+      row.acc_z === null ||
+      row.temperature === null
     ) {
       return null
     }
 
     return {
       timestamp: row.timestamp, // Preserved as integer
+      session_id: row.session_id,
       latitude: row.latitude,
       longitude: row.longitude,
       speed: row.speed,
       acc_x: row.acc_x,
       acc_y: row.acc_y,
+      acc_z: row.acc_z,
+      temperature: row.temperature,
     }
   }
 
@@ -175,6 +190,10 @@ export class TelemetryService {
     if (request.limit !== undefined && (!Number.isInteger(request.limit) || request.limit < 1)) {
       throw new Error("limit must be a positive integer")
     }
+
+    if (request.sessionId !== undefined && (!Number.isInteger(request.sessionId) || request.sessionId < 0)) {
+      throw new Error("sessionId must be a positive integer")
+    }
   }
 
   private toGetTelemetryResponse(value: unknown): GetTelemetryResponse {
@@ -186,6 +205,7 @@ export class TelemetryService {
       start_timestamp: this.toNumber(value.start_timestamp, "start_timestamp"),
       end_timestamp: this.toNumber(value.end_timestamp, "end_timestamp"),
       limit: this.toNumber(value.limit, "limit"),
+      session_id: this.toOptionalNumber(value.session_id, "session_id"),
       count: this.toNumber(value.count, "count"),
       data: this.toTelemetryRows(value.data),
     }
@@ -213,6 +233,14 @@ export class TelemetryService {
   private toNullableNumber(value: unknown, fieldName: string): number | null {
     if (value === null) {
       return null
+    }
+
+    return this.toNumber(value, fieldName)
+  }
+
+  private toOptionalNumber(value: unknown, fieldName: string): number | undefined {
+    if (value === undefined) {
+      return undefined
     }
 
     return this.toNumber(value, fieldName)
