@@ -234,7 +234,7 @@ export function useTelemetry() {
     };
 
     fetchTelemetry();
-    const intervalId = setInterval(fetchTelemetry, 2000);
+    const intervalId = setInterval(fetchTelemetry, 5000);
 
     return () => clearInterval(intervalId);
   }, []);

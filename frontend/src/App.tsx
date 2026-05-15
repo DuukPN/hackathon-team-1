@@ -48,6 +48,7 @@ export function App() {
   }
 
   const { data, latest, laps, timerRefs } = useTelemetry();
+  const [selectedLapId, setSelectedLapId] = useState<number | null>(null);
 
   // Memoize heavy array operations to decouple from arbitrary renders
   const { pathPositions, lastValidGps } = useMemo(() => {
@@ -83,7 +84,7 @@ export function App() {
   const lon = lastValidGps?.longitude;
 
   return (
-    <div className="min-h-screen p-6 bg-[#003530] text-white font-mono flex flex-col items-center gap-8">
+    <div className="min-h-screen p-6 pb-28 bg-[#003530] text-white font-mono flex flex-col items-center gap-8">
       
       <div className="flex justify-between items-center w-full max-w-[1400px]">
         <div className="flex items-center gap-4">
@@ -230,6 +231,32 @@ export function App() {
           </ResponsiveContainer>
         </div>
       </div>
+
+      {laps.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-[1000] border-t border-[#35fdad]/60 bg-black/95 px-6 py-4 shadow-[0_-8px_24px_rgba(0,0,0,0.45)]">
+          <div className="mx-auto flex max-w-[1400px] items-center gap-3 overflow-x-auto">
+            <div className="shrink-0 text-sm font-bold uppercase tracking-wider text-[#35fdad]">Laps</div>
+            {[...laps].reverse().map((lap) => {
+              const isSelected = selectedLapId === lap.id;
+              return (
+                <button
+                  key={`${lap.sessionId}-${lap.startTimestamp}-${lap.endTimestamp}`}
+                  type="button"
+                  onClick={() => setSelectedLapId(lap.id)}
+                  className={`shrink-0 rounded border px-4 py-2 text-left transition ${
+                    isSelected
+                      ? "border-[#f94df9] bg-[#f94df9] text-black"
+                      : "border-[#35fdad]/70 bg-[#003530] text-white hover:border-[#35fdad] hover:bg-[#35fdad] hover:text-[#003530]"
+                  }`}
+                >
+                  <div className="text-xs opacity-75">Lap {lap.id}</div>
+                  <div className="text-lg font-bold leading-tight">{lap.time}</div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
