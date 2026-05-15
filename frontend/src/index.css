@@ -10,3 +10,49 @@ body {
   color: #ffffff;
   font-family: "Inter", system-ui, sans-serif;
 }
+
+.replay-time-slider {
+  height: 32px;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+}
+
+.replay-time-slider::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.2);
+}
+
+.replay-time-slider::-webkit-slider-thumb {
+  width: 26px;
+  height: 26px;
+  margin-top: -9px;
+  border: 3px solid var(--synadia-dark);
+  border-radius: 999px;
+  background: var(--synadia-accent);
+  box-shadow: 0 0 12px rgb(53 253 173 / 0.65);
+  cursor: grab;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.replay-time-slider:active::-webkit-slider-thumb {
+  cursor: grabbing;
+}
+
+.replay-time-slider::-moz-range-track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.2);
+}
+
+.replay-time-slider::-moz-range-thumb {
+  width: 26px;
+  height: 26px;
+  border: 3px solid var(--synadia-dark);
+  border-radius: 999px;
+  background: var(--synadia-accent);
+  box-shadow: 0 0 12px rgb(53 253 173 / 0.65);
+  cursor: grab;
+}

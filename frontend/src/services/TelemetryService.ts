@@ -47,6 +47,8 @@ export type TelemetryData = {
   speed: number
   acc_x: number
   acc_y: number
+  acc_z: number
+  temperature: number
 }
 
 export type LapData = {
@@ -144,6 +146,8 @@ export class TelemetryService {
       speed: row.speed,
       acc_x: row.acc_x,
       acc_y: row.acc_y,
+      acc_z: row.acc_z ?? 0,
+      temperature: row.temperature ?? 0,
     }
   }
 

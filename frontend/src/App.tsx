@@ -3,6 +3,7 @@ import { useTelemetry, type TimerRefs } from "./useTelemetry";
 import { MapContainer, TileLayer, CircleMarker, Polyline } from "react-leaflet";
 import L from "leaflet";
 import { TelemetryPage } from "./TelemetryPage";
+import { ReplayPage } from "./ReplayPage";
 import {
   LineChart,
   Line,
@@ -43,6 +44,10 @@ function LapTimer({ timerRefs }: { timerRefs: TimerRefs }) {
 }
 
 export function App() {
+  if (window.location.pathname === "/replay") {
+    return <ReplayPage />;
+  }
+
   if (window.location.pathname === "/telemetry") {
     return <TelemetryPage />;
   }
@@ -89,12 +94,20 @@ export function App() {
         <div className="flex items-center gap-4">
           <img src="/assets/LogowhiteBig.svg" alt="Synadia" className="h-8" />
         </div>
-        <a
-          href="/telemetry"
-          className="rounded border border-[#35fdad] px-4 py-2 text-sm font-semibold text-[#35fdad] transition hover:bg-[#35fdad] hover:text-[#003530]"
-        >
-          Telemetry data
-        </a>
+        <div className="flex gap-3">
+          <a
+            href="/replay"
+            className="rounded border border-[#35fdad] px-4 py-2 text-sm font-semibold text-[#35fdad] transition hover:bg-[#35fdad] hover:text-[#003530]"
+          >
+            Replay
+          </a>
+          <a
+            href="/telemetry"
+            className="rounded border border-[#35fdad] px-4 py-2 text-sm font-semibold text-[#35fdad] transition hover:bg-[#35fdad] hover:text-[#003530]"
+          >
+            Telemetry data
+          </a>
+        </div>
       </div>
 
       <div className="flex gap-8 h-[550px] w-full max-w-[1400px] justify-center">
