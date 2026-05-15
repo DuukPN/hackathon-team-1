@@ -20,6 +20,7 @@ resource "aws_lambda_function" "api" {
       TABLE_NAME                    = "telemetry"
       SHARED_ROLE_ARN               = var.shared_role_arn
       SHARED_ATHENA_OUTPUT_LOCATION = var.shared_athena_output_location
+      DYNAMODB_TABLE_NAME           = aws_dynamodb_table.telemetry.name
     }
   }
 }
@@ -57,6 +58,24 @@ resource "aws_iam_role_policy" "api_assume_shared" {
         Action   = "sts:AssumeRole"
         Effect   = "Allow"
         Resource = var.shared_role_arn
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "api_dynamodb" {
+  name = "hackathon-api-dynamodb"
+  role = aws_iam_role.api.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "dynamodb:Query"
+        ]
+        Effect   = "Allow"
+        Resource = aws_dynamodb_table.telemetry.arn
       }
     ]
   })

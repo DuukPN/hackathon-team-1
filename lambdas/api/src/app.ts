@@ -4,12 +4,18 @@ import {
   GetQueryResultsCommand,
   StartQueryExecutionCommand,
 } from "@aws-sdk/client-athena";
+import {
+  DynamoDBClient,
+  QueryCommand,
+  type AttributeValue,
+} from "@aws-sdk/client-dynamodb";
 import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
 import { Hono } from "hono";
 
 export const app = new Hono();
 
 const stsClient = new STSClient();
+const dynamoClient = new DynamoDBClient();
 let cachedAthenaClient: AthenaClient | undefined;
 let cachedAthenaClientExpiresAt = 0;
 
@@ -176,10 +182,78 @@ async function getTelemetryBetween(
   limit: number,
   sessionId: number | undefined,
 ): Promise<TelemetryRow[]> {
-  const sql = buildTelemetrySelectSql(startTimestamp, endTimestamp, limit, sessionId);
-  const queryExecutionId = await startAthenaQuery(sql);
-  await waitForAthenaQuery(queryExecutionId);
-  return getAthenaRows(queryExecutionId);
+  return getTelemetryRowsFromDynamoDb(startTimestamp, endTimestamp, limit, sessionId);
+}
+
+async function getTelemetryRowsFromDynamoDb(
+  startTimestamp: number,
+  endTimestamp: number,
+  limit: number,
+  sessionId: number | undefined,
+): Promise<TelemetryRow[]> {
+  const tableName = getRequiredEnv("DYNAMODB_TABLE_NAME");
+  const rows: TelemetryRow[] = [];
+  let exclusiveStartKey: Record<string, AttributeValue> | undefined;
+
+  do {
+    const result = await dynamoClient.send(
+      new QueryCommand({
+        TableName: tableName,
+        KeyConditionExpression: "#team_id = :team_id AND #timestamp BETWEEN :start_timestamp AND :end_timestamp",
+        FilterExpression: sessionId === undefined ? undefined : "#session_id = :session_id",
+        ExpressionAttributeNames: {
+          "#team_id": "team_id",
+          "#timestamp": "timestamp",
+          ...(sessionId === undefined ? {} : { "#session_id": "session_id" }),
+        },
+        ExpressionAttributeValues: {
+          ":team_id": { N: String(TEAM_ID_FILTER) },
+          ":start_timestamp": { N: String(startTimestamp) },
+          ":end_timestamp": { N: String(endTimestamp) },
+          ...(sessionId === undefined ? {} : { ":session_id": { N: String(sessionId) } }),
+        },
+        ExclusiveStartKey: exclusiveStartKey,
+        Limit: Math.max(1, limit - rows.length),
+        ScanIndexForward: true,
+      }),
+    );
+
+    for (const item of result.Items ?? []) {
+      rows.push(toTelemetryRowFromDynamoDbItem(item));
+
+      if (rows.length >= limit) {
+        break;
+      }
+    }
+
+    exclusiveStartKey = result.LastEvaluatedKey;
+  } while (exclusiveStartKey && rows.length < limit);
+
+  console.log("DynamoDB telemetry query returned rows", {
+    startTimestamp,
+    endTimestamp,
+    limit,
+    sessionId,
+    rowCount: rows.length,
+  });
+
+  return rows;
+}
+
+function toTelemetryRowFromDynamoDbItem(item: Record<string, AttributeValue>): TelemetryRow {
+  return TELEMETRY_COLUMNS.reduce((row, column) => {
+    row[column] = toNumberFromAttributeValue(item[column]);
+    return row;
+  }, {} as TelemetryRow);
+}
+
+function toNumberFromAttributeValue(value: AttributeValue | undefined): number | null {
+  if (!value || !("N" in value) || value.N === undefined || value.N === "") {
+    return null;
+  }
+
+  const parsed = Number(value.N);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function buildTelemetrySelectSql(
