@@ -10,7 +10,7 @@ import board
 import time
 import json
 import serial
-import pynmea2
+import datetime
 import threading
 from scipy.spatial.transform import Rotation
 import numpy as np
@@ -33,30 +33,103 @@ class GPSSensor:
 
     def update_data(self):
         while True:
-            gps_line = self.gps_sensor.readline().decode("ascii", errors="replace").strip()
-            data = pynmea2.parse(gps_line)
+            line = self.gps_sensor.readline().decode("ascii", errors="replace").strip()
 
-            # print(data)
-
-            if data.sentence_type == "RMC":
-                self.lat = data.latitude
-                self.long = data.longitude
-                self.speed = (data.spd_over_grnd if data.spd_over_grnd else 0) * 1.852
-                self.course = (data.true_course if data.true_course else 0)
+            if not line.startswith("$"):
+                continue
+            if "*" in line: # checksum
                 try:
-                    self.time = data.datetime.timestamp() * 1000
+                    data, cs = line[1:].split("*")
+                    result = 0
+                    for char in data:
+                        result ^= ord(char)
+                    if not f"{result:02X}" == cs.strip().upper():
+                        continue
                 except:
-                    pass
+                    print("checksum fail!!")
+                    continue
 
-            elif data.sentence_type == "GGA":
-                self.lat = data.latitude
-                self.long = data.longitude
-                self.alt = (data.altitude if data.altitude else 0)
-                self.satellites = int(data.num_sats)
-                try:
-                    self.time = data.datetime.timestamp() * 1000
-                except:
-                    pass
+            fields = line[1:].split("*")[0].split(",")
+
+            sentence_type = fields[0][2:]
+
+            # print(sentence_type, fields)
+
+            if sentence_type == "RMC":
+                if fields[3] and fields[4]:
+                    degrees = int(float(fields[3]) / 100)
+                    minutes = float(fields[3]) - degrees * 100
+                    decimal = degrees + minutes / 60
+                    if fields[4] == "S":
+                        decimal *= -1
+                    self.lat = decimal
+                else:
+                    self.lat = 0
+
+                if fields[5] and fields[6]:
+                    degrees = int(float(fields[5]) / 100)
+                    minutes = float(fields[5]) - degrees * 100
+                    decimal = degrees + minutes / 60
+                    if fields[6] == "W":
+                        decimal *= -1
+                    self.long = decimal
+                else:
+                    self.long = 0
+
+                self.speed = (float(fields[7]) if fields[7] else 0) * 1.852
+                self.course = (float(fields[8]) if fields[8] else 0)
+
+                if fields[1]:
+                    hh = int(fields[1][0:2])
+                    mm = int(fields[1][2:4])
+                    ss = int(fields[1][4:6])
+                    ms = int(fields[1][7:9]) * 10 * 1000 if "." in fields[1] else 0  # centiseconds -> microseconds
+                    time = datetime.time(hh, mm, ss, ms)
+
+                    if fields[9]:
+                        dd = int(fields[9][0:2])
+                        mm = int(fields[9][2:4])
+                        yy = int(fields[9][4:6]) + 2000
+                        date = datetime.date(yy, mm, dd)
+                    else:
+                        date = datetime.date.fromtimestamp(self.time / 1000)
+
+                    self.time = datetime.datetime.combine(date, time).replace(
+                        tzinfo=datetime.timezone.utc).timestamp() * 1000
+
+            elif sentence_type == "GGA":
+                if fields[2] and fields[2]:
+                    degrees = int(float(fields[2]) / 100)
+                    minutes = float(fields[2]) - degrees * 100
+                    decimal = degrees + minutes / 60
+                    if fields[3] == "S":
+                        decimal *= -1
+                    self.lat = decimal
+                else:
+                    self.lat = 0
+
+                if fields[4] and fields[4]:
+                    degrees = int(float(fields[4]) / 100)
+                    minutes = float(fields[4]) - degrees * 100
+                    decimal = degrees + minutes / 60
+                    if fields[5] == "W":
+                        decimal *= -1
+                    self.long = decimal
+                else:
+                    self.long = 0
+
+                self.alt = (float(fields[9]) if fields[9] else 0)
+                self.satellites = (int(fields[7]) if fields[7] else 0)
+
+                if fields[1]:
+                    hh = int(fields[1][0:2])
+                    mm = int(fields[1][2:4])
+                    ss = int(fields[1][4:6])
+                    ms = int(fields[1][7:9]) * 10 * 1000 if "." in fields[1] else 0  # centiseconds -> microseconds
+                    time = datetime.time(hh, mm, ss, ms)
+                    date = datetime.date.fromtimestamp(self.time / 1000)
+                    self.time = datetime.datetime.combine(date, time).replace(
+                        tzinfo=datetime.timezone.utc).timestamp() * 1000
 
 
 def main():
@@ -84,7 +157,9 @@ def main():
     baud = 9600
     gps = GPSSensor(port, baud)
 
-    # TODO: configure sensor settings: acc/gyro frequency, axis remap for inertial reference frame
+    # Remap x=x, y=z, z=-y
+    imu_sensor.axis_remap = (0, 2, 1, 0, 1, 0)
+    imu_sensor.accel_range = adafruit_bno055.ACCEL_8G
 
     try:
         while True:
@@ -92,7 +167,7 @@ def main():
                 f"Lat: {gps.lat:.6f}°  "
                 f"Lon: {gps.long:.6f}°  "
                 f"Alt: {gps.alt:.1f}m  "
-                f"Speed: {gps.speed:.1f}kts  "
+                f"Speed: {gps.speed:.1f}km/h  "
                 f"Course: {gps.course:.1f}°  "
                 f"Sats: {gps.satellites}  "
                 f"Time: {gps.time}  "
