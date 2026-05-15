@@ -79,6 +79,7 @@ app.get("/api/get_telemetry", async (c) => {
   const startTimestamp = parseTimestampQueryParam(c.req.query("start_timestamp"), "start_timestamp");
   const endTimestamp = parseTimestampQueryParam(c.req.query("end_timestamp"), "end_timestamp");
   const limit = parseLimitQueryParam(c.req.query("limit"));
+  const sessionId = parseOptionalIntegerQueryParam(c.req.query("session_id"), "session_id");
 
   if (startTimestamp instanceof Error) {
     return c.json({ error: startTimestamp.message }, 400);
@@ -92,16 +93,21 @@ app.get("/api/get_telemetry", async (c) => {
     return c.json({ error: limit.message }, 400);
   }
 
+  if (sessionId instanceof Error) {
+    return c.json({ error: sessionId.message }, 400);
+  }
+
   if (startTimestamp > endTimestamp) {
     return c.json({ error: "start_timestamp must be less than or equal to end_timestamp" }, 400);
   }
 
   try {
-    const rows = await getTelemetryBetween(startTimestamp, endTimestamp, limit);
+    const rows = await getTelemetryBetween(startTimestamp, endTimestamp, limit, sessionId);
     return c.json({
       start_timestamp: startTimestamp,
       end_timestamp: endTimestamp,
       limit,
+      session_id: sessionId,
       count: rows.length,
       data: rows,
     });
@@ -110,6 +116,7 @@ app.get("/api/get_telemetry", async (c) => {
       startTimestamp,
       endTimestamp,
       limit,
+      sessionId,
       error,
     });
 
@@ -149,25 +156,52 @@ function parseLimitQueryParam(value: string | undefined): number | Error {
   return parsed;
 }
 
+function parseOptionalIntegerQueryParam(value: string | undefined, name: string): number | undefined | Error {
+  if (value === undefined || value.length === 0) {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    return new Error(`${name} must be a positive integer`);
+  }
+
+  return parsed;
+}
+
 async function getTelemetryBetween(
   startTimestamp: number,
   endTimestamp: number,
   limit: number,
+  sessionId: number | undefined,
 ): Promise<TelemetryRow[]> {
-  const sql = buildTelemetrySelectSql(startTimestamp, endTimestamp, limit);
+  const sql = buildTelemetrySelectSql(startTimestamp, endTimestamp, limit, sessionId);
   const queryExecutionId = await startAthenaQuery(sql);
   await waitForAthenaQuery(queryExecutionId);
   return getAthenaRows(queryExecutionId);
 }
 
-function buildTelemetrySelectSql(startTimestamp: number, endTimestamp: number, limit: number): string {
+function buildTelemetrySelectSql(
+  startTimestamp: number,
+  endTimestamp: number,
+  limit: number,
+  sessionId: number | undefined,
+): string {
   const columns = TELEMETRY_COLUMNS.map(quoteIdentifier).join(", ");
+  const filters = [
+    `${quoteIdentifier("team_id")} = ${TEAM_ID_FILTER}`,
+    `${quoteIdentifier("timestamp")} BETWEEN ${startTimestamp} AND ${endTimestamp}`,
+  ];
+
+  if (sessionId !== undefined) {
+    filters.push(`${quoteIdentifier("session_id")} = ${sessionId}`);
+  }
 
   return [
     `SELECT ${columns}`,
     `FROM ${getAthenaTableName()}`,
-    `WHERE ${quoteIdentifier("team_id")} = ${TEAM_ID_FILTER}`,
-    `AND ${quoteIdentifier("timestamp")} BETWEEN ${startTimestamp} AND ${endTimestamp}`,
+    `WHERE ${filters.join(" AND ")}`,
     `ORDER BY ${quoteIdentifier("timestamp")} ASC`,
     `LIMIT ${limit}`,
   ].join(" ");
