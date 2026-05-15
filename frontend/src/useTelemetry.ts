@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef } from "react";
 import { telemetryService, type LapData, type TelemetryData } from "./services/TelemetryService";
 
-const FINISH_LINE_START = { lat: 52.3888, lon: 4.5422 };
-const FINISH_LINE_END = { lat: 52.3885, lon: 4.5428 };
+const FINISH_LINE_START = { lat: 52.3891, lon: 4.5416 };
+const FINISH_LINE_END = { lat: 52.3882, lon: 4.5434 };
 const MAX_LAP_BUFFER = 10000; // Circuit breaker to prevent OOM
 const LAP_STORAGE_KEY = "team-1-laps";
 const EMPTY_STORAGE_RECOMPUTE_LOOKBACK_MS = 30 * 60 * 1000;
@@ -120,7 +120,7 @@ export function useTelemetry() {
   // Timer Refs - Exported to avoid triggering root renders
   const lapStartTime = useRef<number | null>(lastSavedLap?.endTimestamp ?? null);
   const latestDataTime = useRef<number | null>(null);
-  const localTimeOfLastUpdate = useRef<number>(Date.now());
+  const localTimeOfLastUpdate = useRef<number>(Date.now() - 30 * 60 * 1000);
 
   const currentLapPoints = useRef<TelemetryData[]>([]);
   const currentSessionId = useRef<number | null>(lastSavedLap?.sessionId ?? null);
@@ -157,7 +157,7 @@ export function useTelemetry() {
         const rawPoints = await telemetryService.getTelemetryData({
           // startTimestamp: 1778774454000,
           // endTimestamp: 1778776254000,
-          startTimestamp: Date.now() - 30 * 60 * 1000,
+          startTimestamp: localTimeOfLastUpdate.current,
           endTimestamp: Date.now(),
           limit: 10000, 
           sessionId: sessionIdFilter,

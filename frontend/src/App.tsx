@@ -126,9 +126,9 @@ export function App() {
                 attribution="Tiles &copy; Esri"
                 url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
               />
-              {pathPositions.length > 0 && (
+              {/* {pathPositions.length > 0 && (
                 <Polyline positions={pathPositions} color="#35fdad" weight={4} opacity={0.8} />
-              )}
+              )} */}
               {lat && lon && (
                 <CircleMarker 
                   center={[lat, lon]} 

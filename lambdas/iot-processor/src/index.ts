@@ -246,7 +246,10 @@ function assertTelemetryMessage(value: unknown): asserts value is MqttTelemetryM
   assertNumber(value.longitude, "longitude");
   assertNumber(value.altitude, "altitude");
   assertNumber(value.speed, "speed");
-  assertInteger(value.course, "course");
+  
+  // FIX: Course is a directional angle, which is a float, not an integer.
+  assertNumber(value.course, "course"); 
+  
   assertInteger(value.satellites, "satellites");
   assertEpochMilliseconds(value.gps_timestamp, "gps_timestamp");
 
