@@ -12,6 +12,7 @@ import json
 import serial
 import pynmea2
 import threading
+from scipy.spatial.transform import Rotation
 
 
 class GPSSensor:
@@ -82,7 +83,7 @@ def main():
     baud = 9600
     gps = GPSSensor(port, baud)
 
-    # TODO: configure sensor settings: acc/gyro frequency, etc.
+    # TODO: configure sensor settings: acc/gyro frequency, axis remap for inertial reference frame
 
     try:
         while True:
@@ -108,7 +109,10 @@ def main():
 
             grav_x, grav_y, grav_z = imu_sensor.gravity
             lin_acc_x, lin_acc_y, lin_acc_z = imu_sensor.linear_acceleration
-            abs_orient_x, abs_orient_y, abs_orient_z, abs_orient_w = imu_sensor.quaternion
+            quat = imu_sensor.quaternion
+            abs_orient_x, abs_orient_y, abs_orient_z, abs_orient_w = quat
+            print(Rotation.from_quat(quat, degrees=True).as_euler("zyx", degrees=True))
+            print(f"(sensor value: {imu_sensor.euler})")
 
             mqtt_connection.publish(
                 topic=f"tracking-box/data",
@@ -147,13 +151,6 @@ def main():
                     "abs_orientation_y": abs_orient_y,
                     "abs_orientation_z": abs_orient_z,
                     "abs_orientation_w": abs_orient_w,
-
-                    "pitch_rate": 0,
-                    "roll_rate": 0,
-                    "yaw_rate": 0,
-                    "pitch_angle": 0,
-                    "roll_angle": 0,
-                    "yaw_angle": 0,
                 }),
                 qos=mqtt.QoS.AT_LEAST_ONCE
             )

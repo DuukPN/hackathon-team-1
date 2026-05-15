@@ -5,3 +5,4 @@ adafruit-circuitpython-bno055
 hidapi
 gpsd-py3
 pynmea2
+scipy
