@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef } from "react";
 import { telemetryService, type LapData, type TelemetryData } from "./services/TelemetryService";
 
-const FINISH_LINE_START = { lat: 52.3891, lon: 4.5416 };
-const FINISH_LINE_END = { lat: 52.3882, lon: 4.5434 };
+const FINISH_LINE_START = { lat: 52.3889, lon: 4.5420 };
+const FINISH_LINE_END = { lat: 52.3884, lon: 4.5430 };
 const MAX_LAP_BUFFER = 10000; // Circuit breaker to prevent OOM
 const LAP_STORAGE_KEY = "team-1-laps";
 const EMPTY_STORAGE_RECOMPUTE_LOOKBACK_MS = 30 * 60 * 1000;

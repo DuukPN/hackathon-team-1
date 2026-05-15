@@ -210,7 +210,6 @@ async function getTelemetryRowsFromDynamoDb(
           ":end_timestamp": { N: String(endTimestamp) },
         },
         ExclusiveStartKey: exclusiveStartKey,
-        Limit: Math.max(1, limit - rows.length),
         ScanIndexForward: true,
       }),
     );

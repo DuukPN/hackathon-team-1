@@ -219,8 +219,8 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
     // Store all valid records from this SQS batch in DynamoDB for fast dashboard/replay reads.
     await writeTelemetryRowsToDynamoDb(rowsToInsert);
 
-    // Keep writing the same rows to Athena/S3 Tables for historical analysis.
-    await writeTelemetryRows(rowsToInsert);
+    // // Keep writing the same rows to Athena/S3 Tables for historical analysis.
+    // await writeTelemetryRows(rowsToInsert);
   } catch (error) {
     console.error("Failed to insert telemetry batch", {
       messageIds: recordIdsToInsert,
