@@ -200,17 +200,14 @@ async function getTelemetryRowsFromDynamoDb(
       new QueryCommand({
         TableName: tableName,
         KeyConditionExpression: "#team_id = :team_id AND #timestamp BETWEEN :start_timestamp AND :end_timestamp",
-        FilterExpression: sessionId === undefined ? undefined : "#session_id = :session_id",
         ExpressionAttributeNames: {
           "#team_id": "team_id",
           "#timestamp": "timestamp",
-          ...(sessionId === undefined ? {} : { "#session_id": "session_id" }),
         },
         ExpressionAttributeValues: {
           ":team_id": { N: String(TEAM_ID_FILTER) },
           ":start_timestamp": { N: String(startTimestamp) },
           ":end_timestamp": { N: String(endTimestamp) },
-          ...(sessionId === undefined ? {} : { ":session_id": { N: String(sessionId) } }),
         },
         ExclusiveStartKey: exclusiveStartKey,
         Limit: Math.max(1, limit - rows.length),
