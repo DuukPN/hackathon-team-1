@@ -35,7 +35,7 @@ export function useTelemetry() {
   const [latest, setLatest] = useState<TelemetryData | null>(null);
   const [laps, setLaps] = useState<ExtendedLapData[]>([]);
 
-  const lastFetchTimestamp = useRef<number>(0);
+  const lastFetchTimestamp = useRef<number>(Date.now() - 10 * 1000);
   const isFetching = useRef(false);
   
   const lapCount = useRef(0);
